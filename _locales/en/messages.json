@@ -2513,7 +2513,7 @@
         "message": "<strong>Note:</strong> When Stage 2 is DISABLED, the fallback setting <strong>Auto</strong> is used instead of the user settings for all flightchannels (Roll, Pitch, Yaw and Throttle)."
     },
     "failsafeDelayItem": {
-        "message": "Guard time for activation after signal lost [For deciseconds (ds): 1 = 0.1 sec.]"
+        "message": "Guard time for activation after signal lost"
     },
     "failsafeDelayHelp": {
         "message": "Time for stage 1 to wait for recovery"
@@ -2522,7 +2522,7 @@
         "message": "Throttle value used while landing"
     },
     "failsafeOffDelayItem": {
-        "message": "Delay for turning off the Motors during Failsafe [For deciseconds (ds):1 = 0.1 sec.]"
+        "message": "Delay for turning off the Motors during Failsafe"
     },
     "failsafeOffDelayHelp": {
         "message": "Time to stay in landing mode untill the motors are turned off and the craft is disarmed"
