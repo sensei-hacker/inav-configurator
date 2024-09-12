@@ -219,7 +219,11 @@ TABS.auxiliary.initialize = function (callback) {
             rangeElement.remove();
         });
 
-        $(rangeElement).find('.channel').val(auxChannelIndex);
+        if ( $(modeElement).find(".channel").length == 1 ) {
+            $(rangeElement).find('.channel').val(-1);
+        } else {
+            $(rangeElement).find('.channel').val(auxChannelIndex);
+        }
 
     }
 
