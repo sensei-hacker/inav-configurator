@@ -25,10 +25,10 @@
         "message": "Application Options"
     },
     "options_receive_app_notifications": {
-        "message": "Receive desktop <strong>notification</strong> when application updates"
+        "message": "Get told when this here app updates"
     },
     "options_improve_configurator": {
-        "message": "Send anonymous usage data to the developer team"
+        "message": "Let us spy on ya"
     },
     "options_showProfileParameters": {
         "message": "Highlight parameters that change when switching battery or control profiles"
@@ -43,10 +43,10 @@
         "message": "Configurator rendering options"
     },
     "unexpectedError" : {
-        "message": "Unexpected error: $1"
+        "message": "Ah dang: $1"
     },
     "disconnecting": {
-        "message": "Disconnecting..."
+        "message": "See ya later..."
     },
     "connect": {
         "message": "Connect"
@@ -55,7 +55,7 @@
         "message": "Connecting"
     },
     "disconnect": {
-        "message": "Disconnect"
+        "message": "I'm out"
     },
     "autoConnect": {
         "message": "Auto-Connect"
@@ -112,10 +112,10 @@
         "message": "Status"
     },
     "tabCalibration": {
-        "message": "Calibration"
+        "message": "Calibratin"
     },
     "tabConfiguration": {
-        "message": "Configuration"
+        "message": "Configurating"
     },
     "tabPorts": {
         "message": "Ports"
@@ -142,13 +142,13 @@
         "message": "Ez Tune"
     },
     "tabGPS": {
-        "message": "GPS"
+        "message": "Where ya at?"
     },
     "tabOutputs": {
         "message": "Outputs"
     },
     "tabLedStrip": {
-        "message": "LED Strip"
+        "message": "Dem colored lights"
     },
     "tabRawSensorData": {
         "message": "Sensors"
@@ -382,7 +382,7 @@
         "message": "Invalid hex"
     },
     "stm32Erase": {
-        "message": "Erasing ..."
+        "message": "Going, going ... gone"
     },
     "stm32Flashing": {
         "message": "Flashing ..."
@@ -394,7 +394,7 @@
         "message": "Programming: SUCCESSFUL"
     },
     "stm32ProgrammingFailed": {
-        "message": "Programming: FAILED"
+        "message": "Programming: Nope. Not today"
     },
     "stm32AddressLoadFailed": {
         "message": "Address load for option bytes sector failed. Very likely due to read protection."
@@ -435,14 +435,14 @@
     },
 
     "tabSwitchConnectionRequired": {
-        "message": "You need to <strong>connect</strong> before you can view any of the tabs."
+        "message": "Plug 'er in first, brother"
     },
     "tabSwitchWaitForOperation": {
         "message": "You <span style=\"color: red\">can't</span> do this right now, please wait for current operation to finish ..."
     },
 
     "tabSwitchUpgradeRequired": {
-        "message": "You need to <strong>upgrade</strong> your firmware before you can use the $1 tab."
+        "message": "Your stuff too dang old. Upgrade that shi, man"
     },
     "firmwareVersion": {
         "message": "Firmware Version: <strong>$1</strong>"
@@ -467,7 +467,7 @@
         "message": "Application just updated to version: $1"
     },
     "notifications_click_here_to_start_app": {
-        "message": "Click here to start the application"
+        "message": "Click 'er here"
     },
 
     "statusbar_port_utilization": {
@@ -492,7 +492,7 @@
         "message": "CPU Load: $1%"
     },
     "statusbar_arming_flags": {
-        "message": "Arming Flags:"
+        "message": "Why it's broke:"
     },
 
     "dfu_connect_message": {
@@ -513,13 +513,13 @@
     },
 
     "defaultWelcomeIntro": {
-        "message": "Welcome to <strong>INAV - Configurator</strong>, a utility designed to simplify updating, configuring and tuning of your flight controller."
+        "message": "Howdy. This here is <strong>INAV - Configurator</strong>. This'll set up your airplane or whatever."
     },
     "defaultWelcomeHead": {
         "message": "Firmware & drivers"
     },
     "defaultWelcomeHead2": {
-        "message": "INAV Friends"
+        "message": "INAV kinfolk and such"
     },
     "defaultWelcomeText2": {
         "message": "INAV is supported by a great community of users, developers and companies. Here is a short list: <a href=\"http://www.mateksys.com/\" target=\"_blank\">Mateksys</a>, <a href=\"https://www.speedybee.com/\" target=\"_blank\">SpeedyBee</a>, <a href=\"https://geprc.com/\" target=\"_blank\">GEPRC</a>. "
@@ -585,10 +585,10 @@
         "message": "Restore settings to <strong>default</strong>"
     },
     "initialSetupButtonBackup": {
-        "message": "Backup"
+        "message": "Save yo stuff - gonna need it"
     },
     "initialSetupButtonRestore": {
-        "message": "Restore"
+        "message": "Get yo setup back"
     },
     "initialSetupBackupRestoreText": {
         "message": "<strong>Backup</strong> your configuration in case of an accident, <strong>CLI</strong> settings are <span style=\"color: red\">not</span> included - See 'dump' cli command"
@@ -597,7 +597,7 @@
         "message": "Backup saved <span style=\"color: #37a8db\">successfully</span>"
     },
     "initialSetupRestoreSuccess": {
-        "message": "Configuration restored <span style=\"color: #37a8db\">successfully</span>"
+        "message": "Got yo stuff back <span style=\"color: #37a8db\">successfully</span>"
     },
     "initialSetupButtonResetZaxis": {
         "message": "Reset Z axis, offset: 0 deg"
@@ -3223,22 +3223,22 @@
         "message": "Dead Reckoning Navigation"
     },
     "drNavigationHelp": {
-        "message": "Allows INAV to continue navigation (Waypoint, Return to Home, Cruise, Coursehold, etc.) during short GPS outages. This feature needs compass and airspeed sensor enabled on Fixed Wing aircraft."
+        "message": "Keeps goin when yo GPS breaks for a bit. Gotta have a compass and airspeed sensor for planes, tho."
     },
     "rthAltitude": {
-        "message": "RTH altitude"
+        "message": "How high to come back"
     },
     "rthAltitudeHelp": {
         "message": "Used in Extra, Fixed and 'At Least' RTH altitude modes"
     },
     "rthTrackBack": {
-        "message": "RTH Track Back Mode"
+        "message": "Git back theyr same way ya went"
     },
     "rthTrackBackHelp": {
         "message": "When enabled, the aircraft will follow its last path backwards first before flying home directly. Fixed Wing crafts will fly back the path with climbing but not descending. Usage modes for RTH Track Back. OFF = disabled, ON = Normal and Failsafe RTH, FS = Failsafe RTH only."
     },
     "rthTrackBackDistance": {
-        "message": "RTH Track Back Distance"
+        "message": "How far to go back the same way it left"
     },
     "rthTrackBackDistanceHelp": {
         "message": "Distance flown during Track Back. Normal RTH is executed once this total flight distance is exceeded [m]."
