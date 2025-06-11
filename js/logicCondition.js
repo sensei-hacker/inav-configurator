@@ -238,10 +238,10 @@ let LogicCondition = function (enabled, activatorId, operation, operandAType, op
         $container.find('tbody').append('<tr>\
                 <td class="logic_cell__index"></td>\
                 <td class="logic_cell__enabled"></td>\
+                <td class="logic_cell__activator"></td>\
                 <td class="logic_cell__operation"></td>\
                 <td class="logic_cell__operandA"></td>\
                 <td class="logic_cell__operandB"></td>\
-                <td class="logic_cell__activator"></div></td>\
                 <td class="logic_cell__flags"></div></td>\
                 <td class="logic_cell__status"></td>\
             </tr>\
@@ -255,6 +255,7 @@ let LogicCondition = function (enabled, activatorId, operation, operandAType, op
             prop('checked', self.getEnabled()).
             change(self.onEnabledChange);
 
+        // self.renderActivator();
         /*
          * Operator select
          */
