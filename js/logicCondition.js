@@ -239,6 +239,7 @@ let LogicCondition = function (enabled, activatorId, operation, operandAType, op
                 <td class="logic_cell__activator"></div></td>\
                 <td class="logic_cell__index"></td>\
                 <td class="logic_cell__enabled"></td>\
+                <td class="logic_cell__activator"></td>\
                 <td class="logic_cell__operation"></td>\
                 <td class="logic_cell__operandA"></td>\
                 <td class="logic_cell__operandB"></td>\
@@ -255,6 +256,7 @@ let LogicCondition = function (enabled, activatorId, operation, operandAType, op
             prop('checked', self.getEnabled()).
             change(self.onEnabledChange);
 
+        // self.renderActivator();
         /*
          * Operator select
          */

@@ -1,6 +1,6 @@
-import { GUI, TABS } from './../js/gui.js';
-import i18n from './../js/localization.js';
-
+const { GUI, TABS } = require('./../js/gui');
+const path = require('path');
+const i18n = require('./../js/localization');
 
 
 TABS.search = { };
