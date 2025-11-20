@@ -100,10 +100,34 @@ STM32_protocol.prototype.connect = function (port, baud, hex, options, callback)
                 // we are connected, disabling connect button in the UI
                 GUI.connect_lock = true;
 
-                var bufferOut = new ArrayBuffer(1);
-                var bufferView = new Uint8Array(bufferOut);
+                // var bufferOut = new ArrayBuffer(4);
+                // var bufferView = new Uint8Array(bufferOut);
 
-                bufferView[0] = 0x52;
+                encoder = new TextEncoder();
+                var bufferView =  encoder.encode("#\r\n");
+                var bufferOut = bufferView.buffer;
+
+                // bufferView[0] = 0x52;
+
+                // Code I need help with
+                var enteredCli = false;
+                var wait = 0;
+
+                var cliInterval = setTimeout(
+                    function() {
+                        wait++;
+                        self.send(
+                            "#\r\n", 1,
+                            function (reply) { if (self.verify_response(encoder.encode("#"), reply)) {enteredCli = true} }
+                        ),
+                        250
+                    }
+                );
+
+                while ( (enteredCli == false) && (wait < 24) ) {
+                }
+                clearTimeout(cliInterval);
+                // End code I need help with
 
                 CONFIGURATOR.connection.send(bufferOut, function () {
                     CONFIGURATOR.connection.disconnect(function (result) {
