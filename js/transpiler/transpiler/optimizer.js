@@ -56,7 +56,8 @@ class Optimizer {
       ast = this.eliminateCommonSubexpressions(ast);
       
       // Phase 3: Inlining
-      ast = this.inlineSimpleGVARs(ast);
+      // Requires a "local" decorator
+      // ast = this.inlineSimpleGVARs(ast);
       
       const after = JSON.stringify(ast);
       changed = (before !== after);
