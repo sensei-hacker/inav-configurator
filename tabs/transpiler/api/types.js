@@ -69,6 +69,7 @@ declare namespace inav {
     function always(callback: () => void): void;
   }
   
+  /** @deprecated Use standard if statements instead */
   function when(condition: () => boolean, action: () => void): void;
   function sticky(onCondition: () => boolean, offCondition: () => boolean, action: () => void): void;
   function edge(condition: () => boolean, durationMs: number, action: () => void): void;

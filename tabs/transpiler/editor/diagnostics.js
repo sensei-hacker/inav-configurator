@@ -280,7 +280,7 @@ function checkCommonMistakes(line, lineNumber, monaco) {
   const diagnostics = [];
   
   // Missing inav destructuring
-  if (line.match(/\b(flight|override|when|on)\b/) && 
+  if (line.match(/\b(flight|override|on)\b/) && 
       !line.includes('inav') && 
       !line.includes('const {') && 
       lineNumber < 5) {
@@ -289,7 +289,7 @@ function checkCommonMistakes(line, lineNumber, monaco) {
       lineNumber,
       0,
       line.length,
-      'Missing API destructuring. Add: const { flight, override, when, on } = inav;',
+      'Missing API destructuring. Add: const { flight, override, on } = inav;',
       DiagnosticSeverity.Info,
       'MISSING_DESTRUCTURE'
     ));
@@ -308,31 +308,17 @@ function checkCommonMistakes(line, lineNumber, monaco) {
     ));
   }
   
-  // Arrow function without parentheses in when()
-  if (line.match(/when\(\s*\(\)\s*=>/)) {
-    // This is correct
-  } else if (line.match(/when\([^(]/)) {
+  // Deprecated when() usage - suggest if statement instead
+  if (line.match(/when\(/)) {
     diagnostics.push(createDiagnostic(
       monaco,
       lineNumber,
-      line.indexOf('when(') + 5,
-      1,
-      'when() requires arrow function: when(() => condition, () => action)',
-      DiagnosticSeverity.Error,
-      'INVALID_WHEN_SYNTAX'
-    ));
-  }
-  
-  // Forgetting callback in when()
-  if (line.match(/when\([^)]+\)[^;]*;/) && !line.includes('),')) {
-    diagnostics.push(createDiagnostic(
-      monaco,
-      lineNumber,
-      line.indexOf('when'),
+      line.indexOf('when('),
       4,
-      'when() requires two arguments: condition and action callback',
-      DiagnosticSeverity.Error,
-      'MISSING_CALLBACK'
+      'when() is deprecated. Use standard if statements instead: if (condition) { action }',
+      DiagnosticSeverity.Warning,
+      'DEPRECATED_WHEN',
+      'Replace with: if (condition) { ... }'
     ));
   }
   

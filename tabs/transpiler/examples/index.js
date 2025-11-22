@@ -14,15 +14,15 @@ const examples = {
     description: 'Increase VTX power automatically when far from home',
     category: 'VTX',
     code: `// Auto VTX power based on distance
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
-when(() => flight.homeDistance > 100, () => {
+if (flight.homeDistance > 100) {
   override.vtx.power = 3; // High power
-});
+}
 
-when(() => flight.homeDistance > 500, () => {
+if (flight.homeDistance > 500) {
   override.vtx.power = 4; // Max power
-});`
+}`
   },
   
   'battery-protection': {
@@ -30,15 +30,15 @@ when(() => flight.homeDistance > 500, () => {
     description: 'Limit throttle on low battery to preserve cells',
     category: 'Safety',
     code: `// Throttle limit on low battery
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
-when(() => flight.cellVoltage < 350, () => {
+if (flight.cellVoltage < 350) {
   override.throttleScale = 50; // 50% throttle limit
-});
+}
 
-when(() => flight.cellVoltage < 330, () => {
+if (flight.cellVoltage < 330) {
   override.throttleScale = 25; // Emergency - 25% only
-});`
+}`
   },
   
   'auto-rth': {
@@ -46,15 +46,15 @@ when(() => flight.cellVoltage < 330, () => {
     description: 'Trigger RTH when RSSI or link quality drops',
     category: 'Safety',
     code: `// Emergency RTH on signal loss
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
-when(() => flight.rssi < 20, () => {
+if (flight.rssi < 20) {
   override.rcChannel[8] = 2000; // Trigger RTH switch
-});
+}
 
-when(() => flight.linkQualityUplink < 30, () => {
+if (flight.linkQualityUplink < 30) {
   override.rcChannel[8] = 2000; // Trigger RTH switch
-});`
+}`
   },
   
   'heading-storage': {
@@ -76,7 +76,7 @@ on.arm({ delay: 1 }, () => {
     description: 'Force level flight on failsafe or switch',
     category: 'Safety',
     code: `// Emergency stabilization
-const { flight, rc, override, gvar, when, on } = inav;
+const { flight, rc, override, gvar, on } = inav;
 
 // Store initial heading
 on.arm({ delay: 1 }, () => {
@@ -84,11 +84,11 @@ on.arm({ delay: 1 }, () => {
 });
 
 // Activate on failsafe OR switch
-when(() => flight.mode.failsafe || rc[5].high, () => {
+if (flight.mode.failsafe || rc[5].high) {
   override.yaw.angle = gvar[0];  // Hold heading
   override.pitch.angle = 2;       // Slight nose up
   override.roll.angle = 0;        // Level wings
-});`
+}`
   },
   
   'waypoint-actions': {
@@ -96,17 +96,17 @@ when(() => flight.mode.failsafe || rc[5].high, () => {
     description: 'Execute actions at specific waypoints',
     category: 'Waypoint',
     code: `// Waypoint-triggered actions
-const { waypoint, override, when } = inav;
+const { waypoint, override } = inav;
 
 // Max VTX power at survey points (User Action 1)
-when(() => waypoint.userAction[0], () => {
+if (waypoint.userAction[0]) {
   override.vtx.power = 4;
-});
+}
 
 // Slow down near waypoint
-when(() => waypoint.distanceToNext < 50, () => {
+if (waypoint.distanceToNext < 50) {
   override.minGroundSpeed = 3; // 3 m/s minimum
-});`
+}`
   },
   
   'dynamic-loiter': {
@@ -114,17 +114,17 @@ when(() => waypoint.distanceToNext < 50, () => {
     description: 'Adjust loiter radius based on wind or speed',
     category: 'Navigation',
     code: `// Dynamic loiter radius
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
 // Large radius at high speed
-when(() => flight.groundSpeed > 1500, () => {
+if (flight.groundSpeed > 1500) {
   override.loiterRadius = 10000; // 100m radius
-});
+}
 
 // Small radius at low speed
-when(() => flight.groundSpeed < 500, () => {
+if (flight.groundSpeed < 500) {
   override.loiterRadius = 3000; // 30m radius
-});`
+}`
   },
   
   'smart-rth': {
@@ -132,12 +132,12 @@ when(() => flight.groundSpeed < 500, () => {
     description: 'Context-aware RTH behavior',
     category: 'Navigation',
     code: `// Smart RTH - only activate if conditions are safe
-const { flight, override, rc, when } = inav;
+const { flight, override, rc } = inav;
 
-when(() => rc[8].high && flight.gpsValid && flight.gpsSats > 8, () => {
+if (rc[8].high && flight.gpsValid && flight.gpsSats > 8) {
   // RTH switch is high AND GPS is good
   override.rcChannel[8] = 2000; // Allow RTH
-});`
+}`
   }
 };
 
