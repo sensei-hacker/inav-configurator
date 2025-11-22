@@ -1,11 +1,11 @@
 /**
-'use strict';
-
  * INAV API Type Definitions
  * JSDoc type definitions for IDE support
  * 
  * Location: tabs/programming/transpiler/api/types.js
  */
+
+'use strict';
 
 /**
  * @typedef {Object} APIDefinition
@@ -69,7 +69,10 @@ declare namespace inav {
     function always(callback: () => void): void;
   }
   
-  function when(condition: () => boolean, action: () => void): void;
+  /** 
+   * Advanced timing functions
+   * Note: For simple conditions, use standard JavaScript if/else statements
+   */
   function sticky(onCondition: () => boolean, offCondition: () => boolean, action: () => void): void;
   function edge(condition: () => boolean, durationMs: number, action: () => void): void;
   function delay(condition: () => boolean, delayMs: number, action: () => void): void;

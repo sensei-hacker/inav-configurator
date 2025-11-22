@@ -48,7 +48,7 @@ This is a complete, production-ready implementation of a bidirectional JavaScrip
 5. **`decompiler.js`** - INAV to JavaScript Decompiler
    - Converts logic conditions back to JavaScript
    - Intelligent grouping into handlers
-   - Pattern recognition for on.arm, when, etc.
+   - Pattern recognition for on.arm, if statements, etc.
    - Comprehensive warning system
    - Handles complex scenarios
 
@@ -188,11 +188,11 @@ This is a complete, production-ready implementation of a bidirectional JavaScrip
 
 **Input JavaScript:**
 ```javascript
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
-when(() => flight.homeDistance > 100, () => {
+if (flight.homeDistance > 100) {
   override.vtx.power = 3;
-});
+}
 ```
 
 **Output INAV Commands:**
@@ -211,11 +211,11 @@ logic 1 1 0 25 0 0 0 50 0
 
 **Output JavaScript:**
 ```javascript
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
-when(() => flight.cellVoltage < 350, () => {
+if (flight.cellVoltage < 350) {
   override.throttleScale = 50;
-});
+}
 ```
 
 ### Example 3: Full Round-Trip
@@ -226,10 +226,10 @@ on.arm({ delay: 1 }, () => {
   gvar[0] = flight.yaw;
 });
 
-when(() => flight.homeDistance > 500, () => {
+if (flight.homeDistance > 500) {
   override.vtx.power = 4;
   override.throttleScale = 75;
-});
+}
 ```
 
 **Transpiled → Saved to FC → Loaded from FC:**
@@ -237,16 +237,16 @@ when(() => flight.homeDistance > 500, () => {
 // INAV Logic Conditions - Decompiled to JavaScript
 // Note: Comments, variable names, and some structure may be lost
 
-const { flight, override, rc, gvar, on, when } = inav;
+const { flight, override, rc, gvar, on } = inav;
 
 on.arm({ delay: 1 }, () => {
   gvar[0] = flight.yaw;
 });
 
-when(() => flight.homeDistance > 500, () => {
+if (flight.homeDistance > 500) {
   override.vtx.power = 4;
   override.throttleScale = 75;
-});
+}
 ```
 
 ## Testing
@@ -274,7 +274,7 @@ npm test integration.test.js
 
 1. **Subset of JavaScript**: Only supports INAV-specific syntax
 2. **No complex expressions**: Nested function calls not supported
-3. **Limited control flow**: No if/else, loops, or functions
+3. **Limited control flow**: Only if/else supported, no loops or complex functions
 
 ### Decompiler
 
@@ -417,6 +417,6 @@ GPL-3.0 (same as INAV Configurator)
 
 ## Conclusion
 
-This implementation provides a complete, production-ready system for working with INAV logic conditions using JavaScript. The transpiler and decompiler work together to provide a seamless experience for users who prefer JavaScript over CLI commands.
+This implementation provides a complete, production-ready system for working with INAV logic conditions using JavaScript. The transpiler and decompiler work together to provide a seamless experience for users who prefer JavaScript with standard if/else statements over CLI commands.
 
 All files are bug-free, thoroughly tested, and ready for integration into INAV Configurator.

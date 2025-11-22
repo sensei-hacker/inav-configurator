@@ -268,9 +268,9 @@ After modifying definitions:
 // 1. Test semantic analysis
 const code = `
 const { sensors } = inav;
-when(() => sensors.acc, () => {
+if (sensors.acc) {
   // ...
-});
+}
 `;
 
 const transpiler = new Transpiler();

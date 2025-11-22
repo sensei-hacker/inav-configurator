@@ -1,6 +1,4 @@
 /**
-'use strict';
-
  * INAV Transpiler Diagnostics Provider
  * 
  * Location: tabs/programming/transpiler/editor/diagnostics.js
@@ -8,6 +6,8 @@
  * Provides real-time error detection and helpful suggestions for unsupported code.
  * Integrates with Monaco Editor to show errors, warnings, and hints inline.
  */
+
+'use strict';
 
 const { getDefinition, isWritable  } = require('../api/definitions/index.js');
 
@@ -280,7 +280,7 @@ function checkCommonMistakes(line, lineNumber, monaco) {
   const diagnostics = [];
   
   // Missing inav destructuring
-  if (line.match(/\b(flight|override|when|on)\b/) && 
+  if (line.match(/\b(flight|override|on)\b/) && 
       !line.includes('inav') && 
       !line.includes('const {') && 
       lineNumber < 5) {
@@ -289,7 +289,7 @@ function checkCommonMistakes(line, lineNumber, monaco) {
       lineNumber,
       0,
       line.length,
-      'Missing API destructuring. Add: const { flight, override, when, on } = inav;',
+      'Missing API destructuring. Add: const { flight, override, on } = inav;',
       DiagnosticSeverity.Info,
       'MISSING_DESTRUCTURE'
     ));
@@ -305,34 +305,6 @@ function checkCommonMistakes(line, lineNumber, monaco) {
       'Use === for strict equality instead of ==',
       DiagnosticSeverity.Info,
       'USE_STRICT_EQUALITY'
-    ));
-  }
-  
-  // Arrow function without parentheses in when()
-  if (line.match(/when\(\s*\(\)\s*=>/)) {
-    // This is correct
-  } else if (line.match(/when\([^(]/)) {
-    diagnostics.push(createDiagnostic(
-      monaco,
-      lineNumber,
-      line.indexOf('when(') + 5,
-      1,
-      'when() requires arrow function: when(() => condition, () => action)',
-      DiagnosticSeverity.Error,
-      'INVALID_WHEN_SYNTAX'
-    ));
-  }
-  
-  // Forgetting callback in when()
-  if (line.match(/when\([^)]+\)[^;]*;/) && !line.includes('),')) {
-    diagnostics.push(createDiagnostic(
-      monaco,
-      lineNumber,
-      line.indexOf('when'),
-      4,
-      'when() requires two arguments: condition and action callback',
-      DiagnosticSeverity.Error,
-      'MISSING_CALLBACK'
     ));
   }
   
@@ -468,7 +440,7 @@ function getQuickFixesForCode(code, model, range) {
             resource: model.uri,
             edit: {
               range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 },
-              text: 'const { flight, rc, override, waypoint, gvar, when, on } = inav;\n\n'
+              text: 'const { flight, rc, override, waypoint, gvar, on } = inav;\n\n'
             }
           }]
         }
@@ -522,7 +494,7 @@ function setupDiagnostics(monaco, editor) {
 }
 
 module.exports = {
-    DiagnosticSeverity,
-    createDiagnosticsProvider,
-    setupDiagnostics
+  DiagnosticSeverity,
+  createDiagnosticsProvider,
+  setupDiagnostics
 };

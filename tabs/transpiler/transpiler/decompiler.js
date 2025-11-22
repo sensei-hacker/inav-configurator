@@ -265,7 +265,7 @@ class Decompiler {
   }
   
   /**
-   * Build a conditional group (when)
+   * Build a conditional group (if statement)
    * @param {Object} conditionLC - Condition logic condition
    * @param {Array} allConditions - All conditions
    * @param {Set} processed - Set of processed indices
@@ -489,7 +489,7 @@ class Decompiler {
     let code = '// INAV Logic Conditions - Decompiled to JavaScript\n';
     code += '// Note: Comments, variable names, and some structure may be lost\n';
     code += '// Please review and test carefully before use\n\n';
-    code += 'const { flight, override, rc, gvar, on, when } = inav;\n\n';
+    code += 'const { flight, override, rc, gvar, on } = inav;\n\n';
     
     for (const group of groups) {
       code += this.generateGroupCode(group);
@@ -530,13 +530,13 @@ class Decompiler {
         break;
         
       case 'conditional':
-        code += `when(() => ${group.condition}, () => {\n`;
+        code += `if (${group.condition}) {\n`;
         
         for (const action of group.actions) {
           code += `  ${action};\n`;
         }
         
-        code += '});\n';
+        code += '}\n';
         break;
         
       case 'standalone':
@@ -558,15 +558,15 @@ class Decompiler {
     return `// INAV JavaScript Programming
 // Write JavaScript, get INAV logic conditions!
 
-const { flight, override, rc, gvar, on, when } = inav;
+const { flight, override, rc, gvar, on } = inav;
 
 // No logic conditions found on flight controller
 // Start writing your code here...
 
 // Example:
-// when(() => flight.homeDistance > 100, () => {
+// if (flight.homeDistance > 100) {
 //   override.vtx.power = 3;
-// });
+// }
 `;
   }
 }
