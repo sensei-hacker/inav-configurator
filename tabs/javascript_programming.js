@@ -12,8 +12,10 @@ const { GUI, TABS } = require('./../js/gui');
 const FC = require('./../js/fc');
 const path = require('path');
 const i18n = require('./../js/localization');
-const { Transpiler } = require('./transpiler/index.js');
-const { Decompiler } = require('./transpiler/decompiler.js');
+const { Transpiler } = require('./../js/transpiler/index.js');
+const { Decompiler } = require('./../js/transpiler/transpiler/decompiler.js');
+const MonacoLoader = require('./../js/transpiler/editor/monaco_loader.js');
+
 
 TABS.javascript_programming = {
 
@@ -33,30 +35,40 @@ TABS.javascript_programming = {
             GUI.active_tab = 'javascript_programming';
         }
 
-        // Load HTML
         $('#content').load("./tabs/javascript_programming.html", function () {
-            
-            // Initialize transpiler and decompiler
-            self.initTranspiler();
-            
-            // Load Monaco Editor
-            self.loadMonacoEditor(function() {
+    
+        self.initTranspiler();
+    
+        MonacoLoader.loadMonacoEditor()
+            .then(function(monaco) {
+                // Initialize editor with INAV configuration
+                self.editor = MonacoLoader.initializeMonacoEditor(monaco, 'monaco-editor');
                 
-                // Set up UI event handlers
+                // Add INAV type definitions
+                MonacoLoader.addINAVTypeDefinitions(monaco);
+                
+                // Set up linting
+                MonacoLoader.setupLinting(self.editor, function() {
+                    if (self.lintCode) {
+                        self.lintCode();
+                    }
+                });
+                
+                // Continue with initialization
                 self.setupEventHandlers();
-                
-                // Load examples dropdown
                 self.loadExamples();
                 
-                // Load initial code from FC
                 self.loadFromFC(function() {
-                    
-                    // Mark as clean
                     self.isDirty = false;
-                    
                     GUI.content_ready(callback);
                 });
+            })
+            .catch(function(error) {
+                console.error('Failed to load Monaco Editor:', error);
+                GUI.content_ready(callback);
             });
+
+
         });
     },
     
@@ -79,27 +91,185 @@ TABS.javascript_programming = {
         }
     },
 
-    /**
-     * Load Monaco Editor
-     */
-    loadMonacoEditor: function(callback) {
-        const self = this;
-
-        // Try to load Monaco Editor
-        try {
-            const monaco = window.monaco || require('monaco-editor');
-            
-            if (monaco) {
-                self.setupMonaco(monaco);
-                callback();
-            } else {
-                throw new Error('Monaco not found');
+    loadMonacoEditor: function() {
+        return new Promise((resolve, reject) => {
+            try {
+                // Check if already loaded
+                if (window.monaco) {
+                    resolve(window.monaco);
+                    return;
+                }
+                
+                const path = require('path');
+                
+                // Find monaco-editor path
+                let monacoBasePath;
+                try {
+                    monacoBasePath = path.dirname(require.resolve('monaco-editor/package.json'));
+                } catch (e) {
+                    monacoBasePath = path.join(__dirname, '../node_modules/monaco-editor');
+                }
+                
+                // Use the min build which includes everything
+                const vsPath = path.join(monacoBasePath, 'min/vs');
+                const loaderPath = path.join(vsPath, 'loader.js');
+                const editorMainPath = path.join(vsPath, 'editor/editor.main.js');
+                
+                console.log('Loading Monaco from:', vsPath);
+                
+                // Method 1: Try loading editor.main.js directly
+                const editorScript = document.createElement('script');
+                editorScript.src = 'file://' + editorMainPath.replace(/\\/g, '/');
+                
+                editorScript.onerror = () => {
+                    // Method 2: If direct load fails, try AMD loader with workaround
+                    console.log('Direct load failed, trying AMD loader...');
+                    this.loadMonacoViaAMD(vsPath, resolve, reject);
+                };
+                
+                editorScript.onload = () => {
+                    if (window.monaco) {
+                        console.log('Monaco loaded via direct script');
+                        resolve(window.monaco);
+                    } else {
+                        this.loadMonacoViaAMD(vsPath, resolve, reject);
+                    }
+                };
+                
+                document.head.appendChild(editorScript);
+                
+            } catch (error) {
+                console.error('Failed to load Monaco Editor:', error);
+                reject(error);
             }
-        } catch (error) {
-            console.error('Failed to load Monaco Editor:', error);
-            self.createFallbackEditor();
-            callback();
+        });
+    },
+    
+    loadMonacoViaAMD: function(vsPath, resolve, reject) {
+        // Set global MonacoEnvironment before loading
+        window.MonacoEnvironment = {
+            getWorkerUrl: function(workerId, label) {
+                return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
+                    self.MonacoEnvironment = {
+                        baseUrl: 'file://${vsPath.replace(/\\/g, '/')}'
+                    };
+                    importScripts('file://${vsPath.replace(/\\/g, '/')}/base/worker/workerMain.js');
+                `)}`;
+            }
+        };
+        
+        const loaderScript = document.createElement('script');
+        loaderScript.src = 'file://' + vsPath.replace(/\\/g, '/') + '/loader.js';
+        
+        loaderScript.onerror = () => {
+            reject(new Error('Failed to load Monaco loader.js'));
+        };
+        
+        loaderScript.onload = () => {
+            try {
+                // Configure the loader
+                window.require.config({
+                    paths: {
+                        'vs': 'file://' + vsPath.replace(/\\/g, '/')
+                    },
+                    'vs/nls': {
+                        availableLanguages: {}
+                    }
+                });
+                
+                // Load the editor - FIXED: properly handle the callback
+                window.require(['vs/editor/editor.main'], function() {
+                    // Monaco is now available as a global
+                    const monaco = window.monaco;
+                    
+                    if (!monaco || !monaco.editor) {
+                        console.error('Monaco object not properly initialized');
+                        reject(new Error('Monaco editor object not found'));
+                        return;
+                    }
+                    
+                    console.log('Monaco loaded via AMD, editor object:', monaco.editor);
+                    resolve(monaco);
+                }, function(err) {
+                    console.error('AMD require error:', err);
+                    reject(err);
+                });
+            } catch (err) {
+                reject(err);
+            }
+        };
+        
+        document.head.appendChild(loaderScript);
+    },
+
+    initializeMonacoEditor: function(monaco) {
+        const self = this;
+        
+        // Create editor
+        const editorContainer = document.getElementById('monaco-editor');
+        if (!editorContainer) {
+            console.error('Monaco editor container not found');
+            return;
         }
+        
+        self.editor = monaco.editor.create(editorContainer, {
+            value: '// INAV JavaScript Programming\n// Write JavaScript, get INAV logic conditions!\n\nconst { flight, override, rc, gvar, on } = inav;\n\n// Example:\n// if (flight.homeDistance > 100) {\n//   override.vtx.power = 3;\n// }\n',
+            language: 'javascript',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: true },
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            lineNumbers: 'on',
+            renderWhitespace: 'selection',
+            tabSize: 2,
+            insertSpaces: true
+        });
+        
+        // Set up TypeScript/JavaScript defaults for IntelliSense
+        monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+            noSemanticValidation: false,
+            noSyntaxValidation: false
+        });
+        
+        monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+            target: monaco.languages.typescript.ScriptTarget.ES2020,
+            allowNonTsExtensions: true,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            module: monaco.languages.typescript.ModuleKind.CommonJS,
+            noEmit: true,
+            esModuleInterop: true,
+            allowJs: true,
+            checkJs: false
+        });
+        
+        // Add INAV API type definitions
+        try {
+            const apiDefinitions = require('./transpiler/api/definitions/index.js');
+            const { generateTypeDefinitions } = require('./transpiler/api/types.js');
+            const typeDefinitions = generateTypeDefinitions(apiDefinitions);
+            
+            monaco.languages.typescript.javascriptDefaults.addExtraLib(
+                typeDefinitions,
+                'ts:inav.d.ts'
+            );
+            console.log('INAV API type definitions loaded');
+        } catch (error) {
+            console.error('Failed to load INAV type definitions:', error);
+        }
+        
+        // Set up real-time linting (debounced)
+        let lintTimeout;
+        self.editor.onDidChangeModelContent(() => {
+            clearTimeout(lintTimeout);
+            lintTimeout = setTimeout(() => {
+                if (self.lintCode) {
+                    self.lintCode();
+                }
+            }, 500);
+        });
+        
+        console.log('Monaco Editor initialized successfully');
     },
 
     /**
@@ -204,72 +374,75 @@ TABS.javascript_programming = {
     addINAVTypeDefinitions: function(monaco) {
         // Type definitions for INAV API
         const inavTypes = `
-declare namespace inav {
-    interface Flight {
-        readonly armTimer: number;
-        readonly homeDistance: number;
-        readonly tripDistance: number;
-        readonly rssi: number;
-        readonly vbat: number;
-        readonly cellVoltage: number;
-        readonly current: number;
-        readonly mahDrawn: number;
-        readonly gpsSats: number;
-        readonly gpsValid: boolean;
-        readonly groundSpeed: number;
-        readonly altitude: number;
-        readonly verticalSpeed: number;
-        readonly throttlePos: number;
-        readonly roll: number;
-        readonly pitch: number;
-        readonly yaw: number;
-        readonly isArmed: boolean;
-        readonly isFailsafe: boolean;
-        readonly mode: {
-            readonly failsafe: boolean;
-            readonly manual: boolean;
-            readonly rth: boolean;
-            readonly poshold: boolean;
-            readonly althold: boolean;
-        };
-    }
-    
-    interface RCChannel {
-        readonly value: number;
-        readonly low: boolean;
-        readonly mid: boolean;
-        readonly high: boolean;
-    }
-    
-    interface Override {
-        throttleScale: number;
-        vtx: {
-            power: number;
-            band: number;
-            channel: number;
-        };
-        roll: { angle: number; rate: number; };
-        pitch: { angle: number; rate: number; };
-        yaw: { angle: number; rate: number; };
-        rcChannel: number[];
-    }
-    
-    const flight: Flight;
-    const rc: RCChannel[];
-    const override: Override;
-    const gvar: number[];
-    
-    namespace on {
-        function arm(config: { delay: number }, callback: () => void): void;
-        function always(callback: () => void): void;
-    }
-    
-    function when(condition: () => boolean, action: () => void): void;
-}
-
-declare const inav: typeof inav;
-`;
+        declare namespace inav {
+            interface Flight {
+                armTimer: number;
+                homeDistance: number;
+                tripDistance: number;
+                rssi: number;
+                vbat: number;
+                cellVoltage: number;
+                current: number;
+                mahDrawn: number;
+                gpsNumSat: number;
+                gpsValid: boolean;
+                groundSpeed: number;
+                altitude: number;
+                verticalSpeed: number;
+                throttlePos: number;
+                roll: number;
+                pitch: number;
+                yaw: number;
+                isArmed: boolean;
+                isFailsafe: boolean;
+                mode: {
+                    failsafe: boolean;
+                    manual: boolean;
+                    rth: boolean;
+                    poshold: boolean;
+                    cruise: boolean;
+                    althold: boolean;
+                    angle: boolean;
+                    horizon: boolean;
+                    airmode: boolean;
+                };
+            }
+            
+            interface RCChannel {
+                value: number;
+                low: boolean;
+                mid: boolean;
+                high: boolean;
+            }
+            
+            interface Override {
+                throttleScale: number;
+                throttle: number;
+                vtx: {
+                    power: number;
+                    band: number;
+                    channel: number;
+                };
+                armSafety: boolean;
+                osdLayout: number;
+                loiterRadius: number;
+                minGroundSpeed: number;
+                rcChannel: (channel: number, value: number) => void;
+            }
+            
+            const flight: Flight;
+            const rc: RCChannel[];
+            const override: Override;
+            const gvar: number[];
+            const waypoint: any;
+            
+            function edge(condition: () => boolean, config: { duration: number }, action: () => void): void;
+            function sticky(onCondition: () => boolean, offCondition: () => boolean, action: () => void): void;
+            function delay(condition: () => boolean, config: { duration: number }, action: () => void): void;
+        }
         
+        declare const inav: typeof inav;
+        `;
         monaco.languages.typescript.javascriptDefaults.addExtraLib(
             inavTypes,
             'ts:inav.d.ts'
@@ -280,20 +453,20 @@ declare const inav: typeof inav;
      * Get default starter code
      */
     getDefaultCode: function() {
-        return `// INAV JavaScript Programming
+    return `// INAV JavaScript Programming
 // Write JavaScript, get INAV logic conditions!
 
-const { flight, override, when } = inav;
+const { flight, override } = inav;
 
 // Example: Increase VTX power when far from home
-when(() => flight.homeDistance > 100, () => {
+if (flight.homeDistance > 100) {
   override.vtx.power = 3;
-});
+}
 
 // Add your code here...
 `;
     },
-    
+
     /**
      * Set up UI event handlers
      */
@@ -348,89 +521,102 @@ when(() => flight.homeDistance > 100, () => {
         });
     },
     
-    /**
-     * Load examples into dropdown
+    /*
+    **
+     * Load a specific example into the editor
+     * @param {string} exampleId - The ID of the example to load
      */
-    loadExamples: function() {
-        const examples = [
-            { id: 'vtx-distance', name: 'VTX Power by Distance' },
-            { id: 'battery-protection', name: 'Battery Protection' },
-            { id: 'auto-rth', name: 'Auto RTH on Signal Loss' },
-            { id: 'heading-storage', name: 'Store Heading on Arm' },
-            { id: 'emergency-level', name: 'Emergency Stabilization' }
-        ];
+    loadExample: function(exampleId) {
+        const self = this;
         
-        const select = $('#js-example-select');
-        examples.forEach(ex => {
-            select.append($('<option>', {
-                value: ex.id,
-                text: ex.name
-            }));
-        });
+        try {
+            const examples = require('./../js/transpiler/examples/index.js');
+
+            if (!examples[exampleId]) {
+                console.error('Example not found:', exampleId);
+                return;
+            }
+            
+            const example = examples[exampleId];
+            
+            // Set the code in the editor
+            if (self.editor && self.editor.setValue) {
+                self.editor.setValue(example.code);
+                console.log('Loaded example:', example.name);
+            } else {
+                console.error('Editor not initialized');
+            }
+            
+            // Mark as dirty since we changed the code
+            self.isDirty = true;
+            
+        } catch (error) {
+            console.error('Failed to load example:', error);
+        }
     },
     
     /**
-     * Load an example into the editor
+     * Load and populate the examples dropdown
      */
-    loadExample: function(exampleId) {
-        const examples = {
-            'vtx-distance': `// Auto VTX power based on distance
-const { flight, override, when } = inav;
-
-when(() => flight.homeDistance > 100, () => {
-  override.vtx.power = 3;
-});
-
-when(() => flight.homeDistance > 500, () => {
-  override.vtx.power = 4;
-});`,
-            
-            'battery-protection': `// Throttle limit on low battery
-const { flight, override, when } = inav;
-
-when(() => flight.cellVoltage < 350, () => {
-  override.throttleScale = 50;
-});
-
-when(() => flight.cellVoltage < 330, () => {
-  override.throttleScale = 25;
-});`,
-            
-            'auto-rth': `// Emergency RTH on signal loss
-const { flight, override, when } = inav;
-
-when(() => flight.rssi < 20, () => {
-  override.rcChannel[8] = 2000;
-});`,
-            
-            'heading-storage': `// Store heading after arming
-const { flight, gvar, on } = inav;
-
-on.arm({ delay: 1 }, () => {
-  let heading = flight.yaw + 180;
-  heading = heading % 360;
-  gvar[0] = heading;
-});`,
-            
-            'emergency-level': `// Emergency stabilization
-const { flight, rc, override, gvar, when, on } = inav;
-
-on.arm({ delay: 1 }, () => {
-  gvar[0] = flight.yaw;
-});
-
-when(() => flight.mode.failsafe || rc[5].high, () => {
-  override.yaw.angle = gvar[0];
-  override.pitch.angle = 2;
-  override.roll.angle = 0;
-});`
-        };
+    loadExamples: function() {
+        const self = this;
         
-        if (examples[exampleId]) {
-            this.editor.setValue(examples[exampleId]);
-            this.isDirty = true;
+        try {
+            const examples = require('../js/transpiler/examples/index.js');
+            const $examplesSelect = $('#examples-select');
+            
+            if (!$examplesSelect.length) {
+                console.warn('Examples dropdown not found');
+                return;
+            }
+            
+            // Clear existing options
+            $examplesSelect.empty();
+            
+            // Add default option
+            $examplesSelect.append('<option value="">-- Select Example --</option>');
+            
+            // Group examples by category
+            const categories = {};
+            for (const [id, example] of Object.entries(examples)) {
+                const category = example.category || 'Other';
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push({ id, ...example });
+            }
+            
+            // Add examples grouped by category
+            for (const [category, exampleList] of Object.entries(categories).sort()) {
+                const $optgroup = $('<optgroup>').attr('label', category);
+                
+                for (const example of exampleList) {
+                    $optgroup.append(
+                        $('<option>')
+                            .attr('value', example.id)
+                            .text(example.name)
+                            .attr('title', example.description)
+                    );
+                }
+                
+                $examplesSelect.append($optgroup);
+            }
+            
+            // Set up change handler
+            $examplesSelect.off('change').on('change', function() {
+                const exampleId = $(this).val();
+                if (exampleId) {
+                    self.loadExample(exampleId);
+                }
+            });
+            
+            console.log('Examples dropdown populated with', Object.keys(examples).length, 'examples');
+            
+        } catch (error) {
+            console.error('Failed to load examples:', error);
         }
     },
+
     
     /**
      * Transpile JavaScript to INAV logic conditions

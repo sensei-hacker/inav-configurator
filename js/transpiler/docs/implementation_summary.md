@@ -31,7 +31,7 @@ This is a complete, production-ready implementation of a bidirectional JavaScrip
    - Range validation
    - Uninitialized variable detection
 
-3. **`constants.js`** - Configuration Constants
+3. **`inav_constants.js`** - Configuration Constants
    - All magic numbers centralized
    - Reusable error/warning messages
    - Single source of truth for limits
@@ -371,11 +371,6 @@ When INAV firmware adds new features:
 5. Add tests for new features
 6. Update documentation
 
-### Version Compatibility
-
-- **INAV 6.0+**: Full support
-- **INAV 5.x**: Most features (missing some flight params)
-- **INAV 4.x**: Basic features only
 
 ## Contribution Guidelines
 

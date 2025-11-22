@@ -1,7 +1,7 @@
 /**
  * INAV Global Variables API Definition
  * 
- * Location: tabs/transpiler/api/definitions/gvar.js
+ * Location: js/transpiler/api/definitions/gvar.js
  * 
  * Global variables for storing and sharing data between logic conditions.
  * INAV has 8 global variables (gvar[0] through gvar[7]).

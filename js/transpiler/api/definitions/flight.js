@@ -1,7 +1,7 @@
 /**
  * INAV Flight Parameters API Definition
  * 
- * Location: tabs/transpiler/api/definitions/flight.js
+ * Location: js/transpiler/api/definitions/flight.js
  * 
  * Read-only flight controller telemetry and state information.
  * Source: src/main/programming/logic_condition.c (OPERAND_FLIGHT)

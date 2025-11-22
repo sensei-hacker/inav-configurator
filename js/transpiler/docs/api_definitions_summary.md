@@ -2,7 +2,7 @@
 
 ## Overview
 
-Based on the INAV source code and Programming Framework documentation, here are all the API definition files that need to be created in `tabs/transpiler/api/definitions/`.
+Based on the INAV source code and Programming Framework documentation, here are all the API definition files that need to be created in `js/transpiler/api/definitions/`.
 
 ## Files to Create
 
@@ -150,7 +150,7 @@ OPERATION_DIV = 17
 OPERATION_MOD = 18
 
 // Global Variables
-OPERATION_SET_GVAR = 19
+OPERATION_GVAR_SET = 19
 OPERATION_INC_GVAR = 20
 OPERATION_DEC_GVAR = 21
 
@@ -241,7 +241,7 @@ newSensor: {
 
 After creating these files:
 
-- [ ] All files exist in `tabs/transpiler/api/definitions/`
+- [ ] All files exist in `js/transpiler/api/definitions/`
 - [ ] `index.js` exports all definitions
 - [ ] Each property has `inavOperand` or `inavOperation`
 - [ ] Operand values match INAV firmware

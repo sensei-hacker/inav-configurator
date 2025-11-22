@@ -1,7 +1,7 @@
 /**
  * INAV Programming PID API Definition
  * 
- * Location: tabs/transpiler/api/definitions/pid.js
+ * Location: js/transpiler/api/definitions/pid.js
  * 
  * Programming PID controllers for custom control loops.
  * INAV has 4 programming PID controllers (pid[0] through pid[3]).

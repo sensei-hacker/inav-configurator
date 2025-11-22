@@ -4,7 +4,7 @@
 
 All INAV JavaScript API definitions are centralized in:
 ```
-tabs/transpiler/api/definitions/
+js/transpiler/api/definitions/
 ```
 
 **When adding new INAV features, you only need to edit files in this directory.**
@@ -12,7 +12,7 @@ tabs/transpiler/api/definitions/
 ## Directory Structure
 
 ```
-tabs/transpiler/api/definitions/
+js/transpiler/api/definitions/
 ├── index.js           # Exports all definitions
 ├── flight.js          # Flight parameters (read-only)
 ├── override.js        # Override settings (writable)
@@ -83,7 +83,7 @@ module.exports = {
 
 ### Example: Adding `flight.compassHeading`
 
-**1. Edit `tabs/transpiler/api/definitions/flight.js`:**
+**1. Edit `js/transpiler/api/definitions/flight.js`:**
 
 ```javascript
 module.exports = {
@@ -131,7 +131,7 @@ The following automatically update:
 
 ### Example: Adding `override.vtx.frequency`
 
-**1. Edit `tabs/transpiler/api/definitions/override.js`:**
+**1. Edit `js/transpiler/api/definitions/override.js`:**
 
 ```javascript
 module.exports = {
@@ -189,7 +189,7 @@ if (stmt.target === 'override.vtx.frequency') {
 
 ### Example: Adding `inav.sensors`
 
-**1. Create `tabs/transpiler/api/definitions/sensors.js`:**
+**1. Create `js/transpiler/api/definitions/sensors.js`:**
 
 ```javascript
 'use strict';
@@ -219,7 +219,7 @@ module.exports = {
 };
 ```
 
-**2. Update `tabs/transpiler/api/definitions/index.js`:**
+**2. Update `js/transpiler/api/definitions/index.js`:**
 
 ```javascript
 'use strict';
@@ -332,7 +332,7 @@ const flightDef = apiDefinitions.flight;
 ## File Dependencies
 
 ```
-tabs/transpiler/api/definitions/
+js/transpiler/api/definitions/
   ├── index.js
   ├── flight.js
   ├── override.js
@@ -373,7 +373,7 @@ this.inavAPI = this.buildAPIStructure(apiDefinitions);
 
 ## Summary
 
-**One Rule: Edit only `tabs/transpiler/api/definitions/*.js`**
+**One Rule: Edit only `js/transpiler/api/definitions/*.js`**
 
 Everything else updates automatically (except `codegen.js` which requires manual updates for new operations).
 

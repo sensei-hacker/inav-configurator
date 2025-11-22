@@ -1,7 +1,7 @@
 /**
  * INAV RC Channels API Definition
  * 
- * Location: tabs/transpiler/api/definitions/rc.js
+ * Location: js/transpiler/api/definitions/rc.js
  * 
  * RC receiver channel values and states.
  * INAV supports up to 18 RC channels.

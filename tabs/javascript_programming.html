@@ -33,9 +33,13 @@
                 <div class="gui_box_titlebar">
                     <div class="spacer_box_title">JavaScript Editor</div>
                     <div class="spacer_box_title" style="margin-left: auto;">
-                        <select id="js-example-select" class="example-select">
-                            <option value="">Load Example...</option>
-                        </select>
+                       <div class="examples-section" id="js-example-select">
+                           <label for="examples-select">Load Example:</label>
+                           <select id="examples-select" class="select-example">
+                               <option value="">-- Select Example --</option>
+                           </select>
+                       </div>
+
                     </div>
                 </div>
                 <div class="content_wrapper">
@@ -104,10 +108,6 @@
                         <div class="note_spacer">
                             <h4>Quick Reference</h4>
                             
-                            <h5>Event Handlers</h5>
-                            <pre>on.arm({ delay: 1 }, () => { ... });
-when(() => condition, () => { ... });</pre>
-
                             <h5>Flight Parameters (Read-Only)</h5>
                             <pre>flight.homeDistance  // meters
 flight.altitude      // cm
@@ -132,12 +132,13 @@ override.rcChannel[8] = 2000;     // trigger switch</pre>
                             <pre>gvar[0] = 100;     // write
 const x = gvar[0]; // read</pre>
 
-                            <h5>Complete Example</h5>
-                            <pre>const { flight, override, when } = inav;
 
-when(() => flight.homeDistance > 100, () => {
+                            <h5>Complete Example</h5>
+                            <pre>const { flight, override } = inav;
+
+if (flight.homeDistance > 100) {
   override.vtx.power = 3;
-});</pre>
+}</pre>
                         </div>
                     </div>
                 </div>

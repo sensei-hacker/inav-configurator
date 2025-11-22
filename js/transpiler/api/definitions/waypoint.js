@@ -1,7 +1,7 @@
 /**
  * INAV Waypoint Navigation API Definition
  * 
- * Location: tabs/transpiler/api/definitions/waypoint.js
+ * Location: js/transpiler/api/definitions/waypoint.js
  * 
  * Waypoint mission parameters and state.
  * Source: src/main/navigation/navigation_pos_estimator.c

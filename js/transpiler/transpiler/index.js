@@ -12,6 +12,7 @@ const { JavaScriptParser } = require('./parser.js');
 const { INAVCodeGenerator } = require('./codegen.js');
 const { Optimizer } = require('./optimizer.js');
 const { SemanticAnalyzer } = require('./analyzer.js');
+const { OPERAND_TYPE, OPERATION } = require('./inav_constants.js');
 const { INAV_CONSTANTS } = require('./constants.js');
 
 /**
@@ -53,16 +54,20 @@ class Transpiler {
       
       // Collect parser warnings
       const parserWarnings = parseResult.warnings || [];
-      
+      console.log("finished transpile() step 1");
+
       // Step 2: Semantic analysis
       const analyzed = this.analyze(ast);
-      
+      console.log("finished transpile() step 2");
+
       // Step 3: Optimize
       const optimized = this.optimize(analyzed.ast);
-      
+      console.log("finished transpile() step 3");
+
       // Step 4: Generate INAV CLI commands
       const commands = this.codegen.generate(optimized);
-      
+      console.log("finished transpile() step 4");
+
       // Combine all warnings
       const allWarnings = [
         ...parserWarnings,

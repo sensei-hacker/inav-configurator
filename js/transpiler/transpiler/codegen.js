@@ -9,6 +9,8 @@
 
 'use strict';
 
+const { ArrowFunctionHelper } = require('./arrow_function_helper.js');
+
 const {
   OPERAND_TYPE,
   OPERATION,
@@ -25,6 +27,7 @@ class INAVCodeGenerator {
     this.lcIndex = 0; // Current logic condition index
     this.commands = [];
     this.operandMapping = this.buildOperandMapping(apiDefinitions);
+    this.arrowHelper = new ArrowFunctionHelper(this);
   }
   
   /**
@@ -92,7 +95,7 @@ class INAVCodeGenerator {
    */
   generateStatement(stmt) {
     if (!stmt) return;
-    
+    console.log(stmt);
     switch (stmt.type) {
       case 'EventHandler':
         this.generateEventHandler(stmt);
@@ -183,64 +186,124 @@ class INAVCodeGenerator {
     }
   }
   
+  
+
+
   /**
    * Generate edge handler
+   * edge(() => condition, { duration: ms }, () => { actions })
    */
   generateEdge(stmt) {
-    // Edge detection requires:
-    // 1. Condition LC
-    // 2. Timer check
-    // 3. Action
+    if (!stmt.args || stmt.args.length < 3) {
+      console.warn('edge() requires 3 arguments');
+      return;
+    }
     
+    // Extract parts using helper
+    const condition = this.arrowHelper.extractExpression(stmt.args[0]);
+    const duration = this.arrowHelper.extractDuration(stmt.args[1]);
+    const actions = this.arrowHelper.extractBody(stmt.args[2]);
+    
+    if (!condition) {
+      console.warn('edge() condition must be an arrow function');
+      return;
+    }
+    
+    // Generate condition LC
     const conditionId = this.lcIndex;
-    this.generateCondition(stmt.condition, -1);
+    this.generateCondition(condition, -1);
     
-    // TODO: Implement edge with duration
-    // For now, simple edge without debounce
-    for (const action of stmt.body) {
-      this.generateAction(action, conditionId);
+    // Generate EDGE operation (47)
+    const edgeId = this.lcIndex;
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.EDGE} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} ${duration} 0`
+    );
+    this.lcIndex++;
+    
+    // Generate actions
+    for (const action of actions) {
+      this.generateAction(action, edgeId);
     }
   }
   
   /**
    * Generate sticky handler
+   * sticky(() => onCondition, () => offCondition, () => { actions })
    */
   generateSticky(stmt) {
-    // Sticky requires:
-    // 1. On condition LC
-    // 2. Off condition LC
-    // 3. State variable (gvar)
-    // 4. Action
+    if (!stmt.args || stmt.args.length < 3) {
+      console.warn('sticky() requires 3 arguments');
+      return;
+    }
     
-    // TODO: Implement sticky pattern
-    // For now, treat as simple conditional
-    const conditionId = this.lcIndex;
-    this.generateCondition(stmt.onCondition, -1);
+    // Extract parts using helper
+    const onCondition = this.arrowHelper.extractExpression(stmt.args[0]);
+    const offCondition = this.arrowHelper.extractExpression(stmt.args[1]);
+    const actions = this.arrowHelper.extractBody(stmt.args[2]);
     
-    for (const action of stmt.body) {
-      this.generateAction(action, conditionId);
+    if (!onCondition || !offCondition) {
+      console.warn('sticky() conditions must be arrow functions');
+      return;
+    }
+    
+    // Generate ON condition LC
+    const onConditionId = this.lcIndex;
+    this.generateCondition(onCondition, -1);
+    
+    // Generate OFF condition LC
+    const offConditionId = this.lcIndex;
+    this.generateCondition(offCondition, -1);
+    
+    // Generate STICKY operation (13)
+    const stickyId = this.lcIndex;
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.STICKY} ${OPERAND_TYPE.GET_LC_VALUE} ${onConditionId} ${OPERAND_TYPE.GET_LC_VALUE} ${offConditionId} 0`
+    );
+    this.lcIndex++;
+    
+    // Generate actions
+    for (const action of actions) {
+      this.generateAction(action, stickyId);
     }
   }
   
   /**
    * Generate delay handler
+   * delay(() => condition, { duration: ms }, () => { actions })
    */
   generateDelay(stmt) {
-    // Delay requires:
-    // 1. Condition LC
-    // 2. Timer check
-    // 3. Action
+    if (!stmt.args || stmt.args.length < 3) {
+      console.warn('delay() requires 3 arguments');
+      return;
+    }
     
-    // TODO: Implement delay pattern
-    // For now, treat as simple conditional
+    // Extract parts using helper
+    const condition = this.arrowHelper.extractExpression(stmt.args[0]);
+    const duration = this.arrowHelper.extractDuration(stmt.args[1]);
+    const actions = this.arrowHelper.extractBody(stmt.args[2]);
+    
+    if (!condition) {
+      console.warn('delay() condition must be an arrow function');
+      return;
+    }
+    
+    // Generate condition LC
     const conditionId = this.lcIndex;
-    this.generateCondition(stmt.condition, -1);
+    this.generateCondition(condition, -1);
     
-    for (const action of stmt.body) {
-      this.generateAction(action, conditionId);
+    // Generate DELAY operation (48)
+    const delayId = this.lcIndex;
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.DELAY} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} ${duration} 0`
+    );
+    this.lcIndex++;
+    
+    // Generate actions
+    for (const action of actions) {
+      this.generateAction(action, delayId);
     }
   }
-  
+
   /**
    * Generate condition logic condition
    */
@@ -355,32 +418,31 @@ class INAVCodeGenerator {
         
         // Then assign to gvar
         this.commands.push(
-          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.SET_GVAR} ${OPERAND_TYPE.GVAR} ${index} ${OPERAND_TYPE.GET_LC_VALUE} ${resultId} 0`
+          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${index} ${OPERAND_TYPE.GET_LC_VALUE} ${resultId} 0`
         );
         this.lcIndex++;
       } else {
         // Simple assignment: gvar[0] = 100
         const valueOperand = this.getOperand(value);
         this.commands.push(
-          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.SET_GVAR} ${OPERAND_TYPE.GVAR} ${index} ${valueOperand.type} ${valueOperand.value} 0`
+          // `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.GVAR} ${index} ${valueOperand.type} ${valueOperand.value} 0`
+          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${index} ${valueOperand.type} ${valueOperand.value} 0`
         );
         this.lcIndex++;
       }
       return;
     }
     
-    // Handle override operations
     if (target.startsWith('override.')) {
       const operation = this.getOverrideOperation(target);
       const valueOperand = this.getOperand(value);
-      
+  
       this.commands.push(
-        `logic ${this.lcIndex} 1 ${activatorId} ${operation} ${OPERAND_TYPE.VALUE} 0 ${valueOperand.type} ${valueOperand.value} 0`
+        `logic ${this.lcIndex} 1 ${activatorId} ${operation} ${valueOperand.type} ${valueOperand.value} 0 0 0`
       );
       this.lcIndex++;
       return;
     }
-    
     console.warn(`Unknown assignment target: ${target}`);
   }
   
@@ -453,23 +515,26 @@ class INAVCodeGenerator {
     
     return ops[operator] || OPERATION.ADD;
   }
-  
-  /**
-   * Get override operation for target
-   */
-  getOverrideOperation(target) {
-    const operations = {
-      'override.throttleScale': OPERATION.OVERRIDE_THROTTLE_SCALE,
-      'override.throttle': OPERATION.OVERRIDE_THROTTLE,
-      'override.vtx.power': OPERATION.OVERRIDE_VTX_POWER,
-      'override.vtx.band': OPERATION.OVERRIDE_VTX_BAND,
-      'override.vtx.channel': OPERATION.OVERRIDE_VTX_CHANNEL,
-      'override.armSafety': OPERATION.OVERRIDE_ARM_SAFETY,
-      'override.armingDisabled': OPERATION.OVERRIDE_ARMING_DISABLED
-    };
-    
-    return operations[target] || OPERATION.SET_OVERRIDE;
-  }
+    /**
+     * Get override operation for target
+     */
+    getOverrideOperation(target) {
+      const operations = {
+        'override.throttleScale': OPERATION.OVERRIDE_THROTTLE_SCALE,
+        'override.throttle': OPERATION.OVERRIDE_THROTTLE,
+        'override.vtx.power': OPERATION.SET_VTX_POWER_LEVEL,
+        'override.vtx.band': OPERATION.SET_VTX_BAND,
+        'override.vtx.channel': OPERATION.SET_VTX_CHANNEL,
+        'override.armSafety': OPERATION.OVERRIDE_ARMING_SAFETY
+      };
+      
+      const operation = operations[target];
+      if (!operation) {
+        throw new Error(`Unknown override target: ${target}`);
+      }
+      
+      return operation;
+    } 
 }
 
 module.exports = { INAVCodeGenerator };
