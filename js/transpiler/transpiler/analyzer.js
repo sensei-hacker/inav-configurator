@@ -14,7 +14,7 @@
 
 'use strict';
 
-const { INAV_CONSTANTS } = require('./constants.js');
+const { OPERAND_TYPE, OPERATION } = require('./inav_constants.js');
 const apiDefinitions = require('./../api/definitions/index.js');
 
 /**
@@ -259,7 +259,8 @@ class SemanticAnalyzer {
     const line = stmt.loc ? stmt.loc.start.line : 0;
     
     // Check if handler is supported
-    const validHandlers = ['on.arm', 'on.always', 'ifthen'];
+    const validHandlers = ['on.arm', 'on.always', 'ifthen', 'edge', 'sticky', 'delay'];
+
     if (!validHandlers.includes(stmt.handler)) {
       this.errors.push({
         message: `Unknown event handler: ${stmt.handler}. Valid handlers: ${validHandlers.join(', ')}`,

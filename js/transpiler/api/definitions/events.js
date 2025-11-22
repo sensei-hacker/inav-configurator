@@ -1,7 +1,7 @@
 /**
  * INAV Event Handlers API Definition
  * 
- * Location: tabs/transpiler/api/definitions/events.js
+ * Location: js/transpiler/api/definitions/events.js
  * 
  * Event handler functions for triggering logic.
  * These define when and how logic conditions execute.

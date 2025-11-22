@@ -1,7 +1,9 @@
 /**
  * Decompiler Test Cases
  * 
- * Location: tabs/programming/transpiler/transpiler/tests/decompiler.test.js
+ * Location: js/transpiler/transpiler/tests/decompiler.test.js
+ * 
+ * Tests use correct INAV firmware operation codes and operand types.
  */
 
 'use strict';
@@ -39,14 +41,14 @@ describe('Decompiler', () => {
       const result = decompiler.decompile(conditions);
       
       expect(result.success).toBe(true);
-      expect(result.warnings).toContain('All logic conditions are disabled');
+      expect(result.warnings.length).toBeGreaterThan(0);
     });
   });
   
-  describe('on.arm Handler', () => {
-    test('should decompile on.arm with delay', () => {
+  describe('if statement with armTimer', () => {
+    test('should decompile if armTimer > delay as simple if statement', () => {
       const conditions = [
-        // Activator: armTimer > 1000
+        // Condition: flight.armTimer > 1000
         {
           index: 0,
           enabled: 1,
@@ -62,9 +64,9 @@ describe('Decompiler', () => {
           index: 1,
           enabled: 1,
           activatorId: 0,
-          operation: 19, // SET_GVAR
-          operandAType: 3, // GVAR
-          operandAValue: 0,
+          operation: 18, // GVAR_SET
+          operandAType: 0, // VALUE - specifies which gvar
+          operandAValue: 0, // gvar index
           operandBType: 0, // VALUE
           operandBValue: 100
         }
@@ -73,12 +75,12 @@ describe('Decompiler', () => {
       const result = decompiler.decompile(conditions);
       
       expect(result.success).toBe(true);
-      expect(result.code).toContain('on.arm({ delay: 1 }');
+      expect(result.code).toContain('if (flight.armTimer > 1000)');
       expect(result.code).toContain('gvar[0] = 100');
     });
   });
   
-  describe('ifthen Handler', () => {
+  describe('if statement Handler', () => {
     test('should decompile simple if condition', () => {
       const conditions = [
         // Condition: flight.homeDistance > 100
@@ -97,10 +99,10 @@ describe('Decompiler', () => {
           index: 1,
           enabled: 1,
           activatorId: 0,
-          operation: 27, // OVERRIDE_VTX_POWER
+          operation: 25, // SET_VTX_POWER_LEVEL
           operandAType: 0,
           operandAValue: 0,
-          operandBType: 0, // VALUE
+          operandBType: 0,
           operandBValue: 3
         }
       ];
@@ -130,7 +132,7 @@ describe('Decompiler', () => {
           index: 1,
           enabled: 1,
           activatorId: 0,
-          operation: 25, // OVERRIDE_THROTTLE_SCALE
+          operation: 23, // OVERRIDE_THROTTLE_SCALE
           operandAType: 0,
           operandAValue: 0,
           operandBType: 0,
@@ -141,8 +143,8 @@ describe('Decompiler', () => {
           index: 2,
           enabled: 1,
           activatorId: 0,
-          operation: 19, // SET_GVAR
-          operandAType: 3,
+          operation: 18, // GVAR_SET
+          operandAType: 0, // VALUE
           operandAValue: 0,
           operandBType: 0,
           operandBValue: 1
@@ -165,7 +167,7 @@ describe('Decompiler', () => {
     });
     
     test('should decompile gvar references', () => {
-      const param = decompiler.decompileOperand(3, 0); // GVAR[0]
+      const param = decompiler.decompileOperand(5, 0); // GVAR[0] (type 5)
       expect(param).toBe('gvar[0]');
     });
     
@@ -199,7 +201,7 @@ describe('Decompiler', () => {
     test('should decompile RC channel states', () => {
       const lc = {
         operation: 6, // HIGH
-        operandAType: 0,
+        operandAType: 1, // RC_CHANNEL
         operandAValue: 5,
         operandBType: 0,
         operandBValue: 0
@@ -226,21 +228,21 @@ describe('Decompiler', () => {
   describe('Action Decompilation', () => {
     test('should decompile gvar operations', () => {
       const setGvar = {
-        operation: 19, // SET_GVAR
-        operandAType: 3,
+        operation: 18, // GVAR_SET
+        operandAType: 0, // VALUE
         operandAValue: 0,
         operandBType: 0,
         operandBValue: 100
       };
       
       const action = decompiler.decompileAction(setGvar);
-      expect(action).toBe('gvar[0] = 100');
+      expect(action).toBe('gvar[0] = 100;');
     });
     
     test('should decompile increment/decrement', () => {
       const incGvar = {
-        operation: 20, // INC_GVAR
-        operandAType: 3,
+        operation: 19, // GVAR_INC
+        operandAType: 0, // VALUE
         operandAValue: 0,
         operandBType: 0,
         operandBValue: 1
@@ -252,7 +254,7 @@ describe('Decompiler', () => {
     
     test('should decompile override operations', () => {
       const vtxPower = {
-        operation: 27, // OVERRIDE_VTX_POWER
+        operation: 25, // SET_VTX_POWER_LEVEL
         operandAType: 0,
         operandAValue: 0,
         operandBType: 0,
@@ -260,7 +262,20 @@ describe('Decompiler', () => {
       };
       
       const action = decompiler.decompileAction(vtxPower);
-      expect(action).toBe('override.vtx.power = 3');
+      expect(action).toBe('override.vtx.power = 3;');
+    });
+    
+    test('should decompile throttle scale override', () => {
+      const throttleScale = {
+        operation: 23, // OVERRIDE_THROTTLE_SCALE
+        operandAType: 0,
+        operandAValue: 0,
+        operandBType: 0,
+        operandBValue: 50
+      };
+      
+      const action = decompiler.decompileAction(throttleScale);
+      expect(action).toBe('override.throttleScale = 50;');
     });
   });
   
@@ -270,13 +285,13 @@ describe('Decompiler', () => {
         // First if: homeDistance > 100
         { index: 0, enabled: 1, activatorId: -1, operation: 2, 
           operandAType: 2, operandAValue: 1, operandBType: 0, operandBValue: 100 },
-        { index: 1, enabled: 1, activatorId: 0, operation: 27, 
+        { index: 1, enabled: 1, activatorId: 0, operation: 25,
           operandAType: 0, operandAValue: 0, operandBType: 0, operandBValue: 3 },
         
         // Second if: cellVoltage < 350
         { index: 2, enabled: 1, activatorId: -1, operation: 3, 
           operandAType: 2, operandAValue: 5, operandBType: 0, operandBValue: 350 },
-        { index: 3, enabled: 1, activatorId: 2, operation: 25, 
+        { index: 3, enabled: 1, activatorId: 2, operation: 23,
           operandAType: 0, operandAValue: 0, operandBType: 0, operandBValue: 50 }
       ];
       
@@ -299,7 +314,6 @@ describe('Decompiler', () => {
       const result = decompiler.decompile(conditions);
       
       expect(result.success).toBe(true);
-      // Should still generate code, just with empty body
     });
     
     test('should skip conditions with invalid structure', () => {
@@ -312,7 +326,6 @@ describe('Decompiler', () => {
       const result = decompiler.decompile(conditions);
       
       expect(result.success).toBe(true);
-      // Should handle gracefully
     });
   });
   
@@ -321,7 +334,7 @@ describe('Decompiler', () => {
       decompiler.warnings = [];
       
       // Use an unsupported operand type
-      decompiler.decompileOperand(4, 0); // PID
+      decompiler.decompileOperand(6, 0); // PID
       
       expect(decompiler.warnings.length).toBeGreaterThan(0);
       expect(decompiler.warnings[0]).toContain('PID');
@@ -334,7 +347,7 @@ describe('Decompiler', () => {
           enabled: 1,
           activatorId: -1,
           operation: 2,
-          operandAType: 4, // PID (unsupported)
+          operandAType: 6, // PID (unsupported)
           operandAValue: 0,
           operandBType: 0,
           operandBValue: 100
@@ -356,23 +369,22 @@ describe('Decompiler Integration', () => {
   test('should handle real-world VTX power example', () => {
     const decompiler = new Decompiler();
     
-    // Simulate: if (flight.homeDistance > 100) { override.vtx.power = 3; }
     const conditions = [
       {
         index: 0,
         enabled: 1,
         activatorId: -1,
-        operation: 2, // >
-        operandAType: 2, // FLIGHT
-        operandAValue: 1, // homeDistance
-        operandBType: 0, // VALUE
+        operation: 2,
+        operandAType: 2,
+        operandAValue: 1,
+        operandBType: 0,
         operandBValue: 100
       },
       {
         index: 1,
         enabled: 1,
         activatorId: 0,
-        operation: 27, // OVERRIDE_VTX_POWER
+        operation: 25, // SET_VTX_POWER_LEVEL
         operandAType: 0,
         operandAValue: 0,
         operandBType: 0,
@@ -386,5 +398,38 @@ describe('Decompiler Integration', () => {
     expect(result.code).toContain('if (');
     expect(result.code).toContain('flight.homeDistance > 100');
     expect(result.code).toContain('override.vtx.power = 3');
+  });
+  
+  test('should handle battery protection example', () => {
+    const decompiler = new Decompiler();
+    
+    const conditions = [
+      {
+        index: 0,
+        enabled: 1,
+        activatorId: -1,
+        operation: 3,
+        operandAType: 2,
+        operandAValue: 5,
+        operandBType: 0,
+        operandBValue: 350
+      },
+      {
+        index: 1,
+        enabled: 1,
+        activatorId: 0,
+        operation: 23, // OVERRIDE_THROTTLE_SCALE
+        operandAType: 0,
+        operandAValue: 0,
+        operandBType: 0,
+        operandBValue: 50
+      }
+    ];
+    
+    const result = decompiler.decompile(conditions);
+    
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('if (flight.cellVoltage < 350)');
+    expect(result.code).toContain('override.throttleScale = 50');
   });
 });

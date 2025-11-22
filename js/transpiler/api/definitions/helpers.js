@@ -1,7 +1,7 @@
 /**
  * INAV Helper Functions API Definition
  * 
- * Location: tabs/transpiler/api/definitions/helpers.js
+ * Location: js/transpiler/api/definitions/helpers.js
  * 
  * Math and utility functions available in INAV programming.
  * Source: src/main/programming/logic_condition.c (OPERATION_*)
