@@ -5,6 +5,10 @@
  * 
  * Event handler functions for triggering logic.
  * These define when and how logic conditions execute.
+ * 
+ * NOTE: For simple conditional logic, use standard JavaScript if/else statements.
+ * The functions defined here provide specialized timing and state management
+ * functionality beyond what if statements can provide.
  */
 
 'use strict';
@@ -53,27 +57,13 @@ module.exports = {
     }
   },
   
-  // Conditional handlers
-  when: {
-    type: 'function',
-    desc: 'Execute when condition becomes true',
-    params: {
-      condition: {
-        type: 'function',
-        desc: 'Condition function returning boolean',
-        returns: 'boolean'
-      },
-      action: {
-        type: 'function',
-        desc: 'Action function to execute'
-      }
-    },
-    example: 'when(() => flight.homeDistance > 100, () => { override.vtx.power = 3; })'
-  },
+  // Advanced timing and state management functions
+  // For simple conditions, use if statements instead
   
   sticky: {
     type: 'function',
-    desc: 'Execute when on-condition is true, stop when off-condition is true',
+    desc: 'Execute when on-condition is true, stop when off-condition is true (maintains state)',
+    note: 'For simple conditions without state tracking, use if/else statements instead',
     params: {
       onCondition: {
         type: 'function',
@@ -96,7 +86,8 @@ module.exports = {
   
   edge: {
     type: 'function',
-    desc: 'Execute only when condition transitions from false to true',
+    desc: 'Execute only when condition transitions from false to true (rising edge detection)',
+    note: 'For simple conditions without edge detection, use if statements instead',
     params: {
       condition: {
         type: 'function',
@@ -119,6 +110,7 @@ module.exports = {
   delay: {
     type: 'function',
     desc: 'Execute action after condition has been true for specified duration',
+    note: 'For immediate execution, use if statements instead',
     params: {
       condition: {
         type: 'function',
@@ -140,7 +132,7 @@ module.exports = {
   
   timer: {
     type: 'function',
-    desc: 'Execute action on a periodic timer',
+    desc: 'Execute action on a periodic timer (on/off cycling)',
     params: {
       onMs: {
         type: 'number',

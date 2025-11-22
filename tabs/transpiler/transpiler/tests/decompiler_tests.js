@@ -78,8 +78,8 @@ describe('Decompiler', () => {
     });
   });
   
-  describe('when Handler', () => {
-    test('should decompile simple when condition', () => {
+  describe('ifthen Handler', () => {
+    test('should decompile simple ifthen condition', () => {
       const conditions = [
         // Condition: flight.homeDistance > 100
         {
