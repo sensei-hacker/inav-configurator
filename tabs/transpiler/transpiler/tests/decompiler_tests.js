@@ -79,7 +79,7 @@ describe('Decompiler', () => {
   });
   
   describe('ifthen Handler', () => {
-    test('should decompile simple ifthen condition', () => {
+    test('should decompile simple if condition', () => {
       const conditions = [
         // Condition: flight.homeDistance > 100
         {
@@ -108,11 +108,11 @@ describe('Decompiler', () => {
       const result = decompiler.decompile(conditions);
       
       expect(result.success).toBe(true);
-      expect(result.code).toContain('when(() => flight.homeDistance > 100');
+      expect(result.code).toContain('if (flight.homeDistance > 100)');
       expect(result.code).toContain('override.vtx.power = 3');
     });
     
-    test('should decompile when with multiple actions', () => {
+    test('should decompile if with multiple actions', () => {
       const conditions = [
         // Condition: flight.cellVoltage < 350
         {
@@ -152,7 +152,7 @@ describe('Decompiler', () => {
       const result = decompiler.decompile(conditions);
       
       expect(result.success).toBe(true);
-      expect(result.code).toContain('when(() => flight.cellVoltage < 350');
+      expect(result.code).toContain('if (flight.cellVoltage < 350)');
       expect(result.code).toContain('override.throttleScale = 50');
       expect(result.code).toContain('gvar[0] = 1');
     });
@@ -265,15 +265,15 @@ describe('Decompiler', () => {
   });
   
   describe('Complex Scenarios', () => {
-    test('should decompile multiple independent when statements', () => {
+    test('should decompile multiple independent if statements', () => {
       const conditions = [
-        // First when: homeDistance > 100
+        // First if: homeDistance > 100
         { index: 0, enabled: 1, activatorId: -1, operation: 2, 
           operandAType: 2, operandAValue: 1, operandBType: 0, operandBValue: 100 },
         { index: 1, enabled: 1, activatorId: 0, operation: 27, 
           operandAType: 0, operandAValue: 0, operandBType: 0, operandBValue: 3 },
         
-        // Second when: cellVoltage < 350
+        // Second if: cellVoltage < 350
         { index: 2, enabled: 1, activatorId: -1, operation: 3, 
           operandAType: 2, operandAValue: 5, operandBType: 0, operandBValue: 350 },
         { index: 3, enabled: 1, activatorId: 2, operation: 25, 
@@ -356,7 +356,7 @@ describe('Decompiler Integration', () => {
   test('should handle real-world VTX power example', () => {
     const decompiler = new Decompiler();
     
-    // Simulate: when(flight.homeDistance > 100) { override.vtx.power = 3; }
+    // Simulate: if (flight.homeDistance > 100) { override.vtx.power = 3; }
     const conditions = [
       {
         index: 0,
@@ -383,7 +383,7 @@ describe('Decompiler Integration', () => {
     const result = decompiler.decompile(conditions);
     
     expect(result.success).toBe(true);
-    expect(result.code).toContain('when');
+    expect(result.code).toContain('if (');
     expect(result.code).toContain('flight.homeDistance > 100');
     expect(result.code).toContain('override.vtx.power = 3');
   });

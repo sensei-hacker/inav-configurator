@@ -31,6 +31,6 @@ module.exports = {
   // Helper functions (min, max, abs, sin, cos, etc.)
   helpers: require('./helpers.js'),
   
-  // Event handlers (on, when, sticky, etc.)
+  // Event handlers (on, sticky, etc.)
   events: require('./events.js')
 };
