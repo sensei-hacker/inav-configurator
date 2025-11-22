@@ -24,7 +24,7 @@ const INAV_CONSTANTS = {
   SPEED_RANGE: { min: 0, max: 500 }, // cm/s
   
   // Valid event handlers
-  VALID_HANDLERS: ['on.arm', 'on.always', 'when'],
+  VALID_HANDLERS: ['on.arm', 'on.always', 'ifthen'],
   
   // RC channels
   RC_CHANNEL_COUNT: 18,

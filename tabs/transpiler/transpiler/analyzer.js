@@ -259,7 +259,7 @@ class SemanticAnalyzer {
     const line = stmt.loc ? stmt.loc.start.line : 0;
     
     // Check if handler is supported
-    const validHandlers = ['on.arm', 'on.always', 'when'];
+    const validHandlers = ['on.arm', 'on.always', 'ifthen'];
     if (!validHandlers.includes(stmt.handler)) {
       this.errors.push({
         message: `Unknown event handler: ${stmt.handler}. Valid handlers: ${validHandlers.join(', ')}`,
@@ -267,7 +267,7 @@ class SemanticAnalyzer {
       });
     }
     
-    // Check condition in 'when' statements
+    // Check condition in 'ifthen' statements (if/else)
     if (stmt.condition) {
       this.checkCondition(stmt.condition, line);
     }
@@ -567,8 +567,8 @@ class SemanticAnalyzer {
     
     for (const stmt of ast.statements) {
       if (stmt && stmt.type === 'EventHandler') {
-        const handlerKey = stmt.handler === 'when' ? 
-          `when:${this.serializeCondition(stmt.condition)}` : 
+        const handlerKey = stmt.handler === 'ifthen' ? 
+          `ifthen:${this.serializeCondition(stmt.condition)}` : 
           stmt.handler;
         
         if (!handlerAssignments.has(handlerKey)) {

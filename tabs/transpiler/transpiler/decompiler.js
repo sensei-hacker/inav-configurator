@@ -289,7 +289,7 @@ class Decompiler {
     
     return {
       type: 'conditional',
-      handler: 'when',
+      handler: 'ifthen',
       condition,
       actions: actions.map(lc => this.decompileAction(lc)),
       conditionIndex: conditionLC.index

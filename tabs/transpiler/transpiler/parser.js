@@ -4,7 +4,7 @@
  * Location: tabs/programming/transpiler/transpiler/parser.js
  * 
  * Supports REAL JavaScript including if statements!
- * Transpiles both standard JavaScript and INAV-style when() functions.
+ * Parses standard JavaScript including if/else statements and converts to INAV logic conditions.
  */
 
 'use strict';
@@ -13,7 +13,7 @@ const acorn = require('acorn');
 
 /**
  * Production JavaScript Parser for INAV subset
- * Supports real JavaScript if statements and INAV when() functions
+ * Supports real JavaScript if statements and INAV event handlers
  */
 class JavaScriptParser {
   constructor() {
@@ -91,7 +91,7 @@ class JavaScriptParser {
   }
   
   /**
-   * Transform if statement to INAV when() equivalent
+   * Transform if statement to INAV logic conditions
    * This allows users to write real JavaScript!
    */
   transformIfStatement(node) {
@@ -115,11 +115,11 @@ class JavaScriptParser {
       }
     }
     
-    // Create when() equivalent for if block
+    // Create logic condition for if block
     if (thenBody.length > 0) {
       results.push({
         type: 'EventHandler',
-        handler: 'when',
+        handler: 'ifthen',
         condition,
         body: thenBody,
         loc: node.loc,
@@ -147,11 +147,11 @@ class JavaScriptParser {
         if (transformed) elseBody.push(transformed);
       }
       
-      // Create when() for else block with inverted condition
+      // Create logic condition for else block with inverted condition
       if (elseBody.length > 0) {
         results.push({
           type: 'EventHandler',
-          handler: 'when',
+          handler: 'ifthen',
           condition: this.invertCondition(condition),
           body: elseBody,
           loc: node.alternate.loc,
@@ -166,8 +166,8 @@ class JavaScriptParser {
   
   /**
    * Invert a condition for else blocks
-   * if (x > 5) {...} else {...} becomes:
-   *   when(() => x > 5, ...) and when(() => !(x > 5), ...)
+   * if (x > 5) {...} else {...}
+   * generates two separate logic conditions with inverted conditions
    */
   invertCondition(condition) {
     if (!condition) return null;
@@ -214,7 +214,7 @@ class JavaScriptParser {
     const expr = node.expression;
     if (!expr) return null;
     
-    // Look for function calls: on.arm(...), when(...)
+    // Look for function calls: on.arm(...), etc
     if (expr.type === 'CallExpression') {
       return this.transformCallExpression(expr, node.loc, node.range);
     }
@@ -422,7 +422,7 @@ class JavaScriptParser {
       // For nested ifs, we need to flatten them
       this.warnings.push({
         type: 'info',
-        message: 'Nested if statement - will be flattened to multiple when() conditions',
+        message: 'Nested if statement - will be flattened to multiple logic conditions',
         line: stmt.loc ? stmt.loc.start.line : 0
       });
       // Return null here - nested ifs need special handling at a higher level
