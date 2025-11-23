@@ -241,10 +241,11 @@ class JavaScriptParser {
       return this.transformEventHandler(handler, expr.arguments, loc, range);
     }
     
-    // edge(...), sticky(...), delay(...)
+    // edge(...), sticky(...), delay(...), timer(...), whenChanged(...)
     if (expr.callee.type === 'Identifier') {
       const fnName = expr.callee.name;
-      if (fnName === 'edge' || fnName === 'sticky' || fnName === 'delay') {
+      if (fnName === 'edge' || fnName === 'sticky' || fnName === 'delay' || 
+          fnName === 'timer' || fnName === 'whenChanged') {
         return this.transformHelperFunction(fnName, expr.arguments, loc, range);
       }
     }
@@ -253,13 +254,15 @@ class JavaScriptParser {
   }
   
   /**
-   * Transform helper functions (edge, sticky, delay)
+   * Transform helper functions (edge, sticky, delay, timer, whenChanged)
    */
   transformHelperFunction(fnName, args, loc, range) {
     // Parse based on function type
     // edge(condition, durationMs, action)
     // sticky(onCondition, offCondition, action)
     // delay(condition, durationMs, action)
+    // timer(onMs, offMs, action)
+    // whenChanged(value, threshold, action)
     
     if (!args || args.length < 2) {
       this.warnings.push({

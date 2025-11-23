@@ -31,7 +31,7 @@ Contains override operations:
 - **Attitude** (nested): roll.angle, roll.rate, pitch.angle, pitch.rate, yaw.angle, yaw.rate
 - **Heading**: heading override
 - **RC Channels**: rcChannel[] array
-- **Arming**: armSafety, armingDisabled
+- **Arming**: armSafety
 - **OSD**: osdElement
 
 ### 3. ✅ **rc.js** - RC Receiver Channels (READ-ONLY)

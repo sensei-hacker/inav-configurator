@@ -95,7 +95,6 @@ class INAVCodeGenerator {
    */
   generateStatement(stmt) {
     if (!stmt) return;
-    console.log(stmt);
     switch (stmt.type) {
       case 'EventHandler':
         this.generateEventHandler(stmt);
@@ -127,6 +126,10 @@ class INAVCodeGenerator {
       this.generateSticky(stmt);
     } else if (handler === 'delay') {
       this.generateDelay(stmt);
+    } else if (handler === 'timer') {
+      this.generateTimer(stmt);
+    } else if (handler === 'whenChanged') {
+      this.generateWhenChanged(stmt);
     } else {
       // Default: treat as conditional
       this.generateConditional(stmt);
@@ -176,9 +179,35 @@ class INAVCodeGenerator {
   generateConditional(stmt) {
     if (!stmt.condition) return;
     
-    // Generate condition logic condition
-    const conditionId = this.lcIndex;
-    this.generateCondition(stmt.condition, -1);
+    let conditionId;
+    
+    // Check if we should reuse an existing condition (CSE optimization)
+    if (stmt.reuseCondition) {
+      // Find the LC index of the reused condition
+      conditionId = stmt.reuseCondition.conditionLcIndex;
+      
+      if (conditionId === undefined) {
+        // Fallback: generate new condition if reuse fails
+        conditionId = this.generateCondition(stmt.condition, -1);
+        stmt.conditionLcIndex = conditionId;
+      } else {
+        // If we need to invert the condition, generate a NOT operation
+        if (stmt.invertReuse) {
+          const notId = this.lcIndex;
+          this.commands.push(
+            `logic ${this.lcIndex} 1 -1 ${OPERATION.NOT} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} 0 0`
+          );
+          this.lcIndex++;
+          conditionId = notId;
+        }
+      }
+    } else {
+      // Generate new condition logic condition
+      conditionId = this.generateCondition(stmt.condition, -1);
+      
+      // Store the LC index for potential reuse by other statements
+      stmt.conditionLcIndex = conditionId;
+    }
     
     // Generate body actions
     for (const action of stmt.body) {
@@ -210,8 +239,7 @@ class INAVCodeGenerator {
     }
     
     // Generate condition LC
-    const conditionId = this.lcIndex;
-    this.generateCondition(condition, -1);
+    const conditionId = this.generateCondition(condition, -1);
     
     // Generate EDGE operation (47)
     const edgeId = this.lcIndex;
@@ -247,12 +275,10 @@ class INAVCodeGenerator {
     }
     
     // Generate ON condition LC
-    const onConditionId = this.lcIndex;
-    this.generateCondition(onCondition, -1);
+    const onConditionId = this.generateCondition(onCondition, -1);
     
     // Generate OFF condition LC
-    const offConditionId = this.lcIndex;
-    this.generateCondition(offCondition, -1);
+    const offConditionId = this.generateCondition(offCondition, -1);
     
     // Generate STICKY operation (13)
     const stickyId = this.lcIndex;
@@ -288,8 +314,7 @@ class INAVCodeGenerator {
     }
     
     // Generate condition LC
-    const conditionId = this.lcIndex;
-    this.generateCondition(condition, -1);
+    const conditionId = this.generateCondition(condition, -1);
     
     // Generate DELAY operation (48)
     const delayId = this.lcIndex;
@@ -303,14 +328,107 @@ class INAVCodeGenerator {
       this.generateAction(action, delayId);
     }
   }
+  
+  /**
+   * Generate timer handler
+   * timer(onMs, offMs, () => { actions })
+   * 
+   * Creates a timer that cycles: ON for onMs, OFF for offMs, repeat
+   * TIMER operation (49): Operand A = ON duration (ms), Operand B = OFF duration (ms)
+   */
+  generateTimer(stmt) {
+    if (!stmt.args || stmt.args.length < 3) {
+      console.warn('timer() requires 3 arguments: onMs, offMs, action');
+      return;
+    }
+    
+    // Extract durations (should be literals)
+    const onMs = this.arrowHelper.extractValue(stmt.args[0]);
+    const offMs = this.arrowHelper.extractValue(stmt.args[1]);
+    const actions = this.arrowHelper.extractBody(stmt.args[2]);
+    
+    if (typeof onMs !== 'number' || typeof offMs !== 'number') {
+      console.warn('timer() durations must be numeric literals');
+      return;
+    }
+    
+    if (onMs <= 0 || offMs <= 0) {
+      console.warn('timer() durations must be positive values');
+      return;
+    }
+    
+    // Generate TIMER operation (49)
+    // This is the activator - no condition needed, timer auto-toggles
+    const timerId = this.lcIndex;
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.TIMER} ${OPERAND_TYPE.VALUE} ${onMs} ${OPERAND_TYPE.VALUE} ${offMs} 0`
+    );
+    this.lcIndex++;
+    
+    // Generate actions
+    for (const action of actions) {
+      this.generateAction(action, timerId);
+    }
+  }
+  
+  /**
+   * Generate whenChanged handler (DELTA operation)
+   * whenChanged(value, threshold, () => { actions })
+   * 
+   * Triggers when value changes by >= threshold within 100ms
+   * DELTA operation (50): Operand A = value to monitor, Operand B = threshold
+   */
+  generateWhenChanged(stmt) {
+    if (!stmt.args || stmt.args.length < 3) {
+      console.warn('whenChanged() requires 3 arguments: value, threshold, action');
+      return;
+    }
+    
+    // Extract value to monitor (should be a flight parameter or gvar)
+    const valueExpr = stmt.args[0];
+    const threshold = this.arrowHelper.extractValue(stmt.args[1]);
+    const actions = this.arrowHelper.extractBody(stmt.args[2]);
+    
+    if (typeof threshold !== 'number') {
+      console.warn('whenChanged() threshold must be a numeric literal');
+      return;
+    }
+    
+    if (threshold <= 0) {
+      console.warn('whenChanged() threshold must be positive');
+      return;
+    }
+    
+    // Get the operand for the value to monitor
+    // This could be flight.altitude, gvar[0], etc.
+    const valueIdentifier = this.arrowHelper.extractIdentifier(valueExpr);
+    const valueOperand = this.getOperand(valueIdentifier);
+    
+    if (!valueOperand) {
+      console.warn(`whenChanged() invalid value: ${valueIdentifier}`);
+      return;
+    }
+    
+    // Generate DELTA operation (50)
+    // This is the activator - returns true when value changes by >= threshold
+    const deltaId = this.lcIndex;
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.DELTA} ${valueOperand.type} ${valueOperand.value} ${OPERAND_TYPE.VALUE} ${threshold} 0`
+    );
+    this.lcIndex++;
+    
+    // Generate actions
+    for (const action of actions) {
+      this.generateAction(action, deltaId);
+    }
+  }
 
   /**
    * Generate condition logic condition
+   * @returns {number} The LC index of the final condition result
    */
   generateCondition(condition, activatorId) {
     if (!condition) return this.lcIndex;
-    
-    const startIndex = this.lcIndex;
     
     switch (condition.type) {
       case 'BinaryExpression': {
@@ -318,42 +436,42 @@ class INAVCodeGenerator {
         const right = this.getOperand(condition.right);
         const op = this.getOperation(condition.operator);
         
+        const resultIndex = this.lcIndex;
         this.commands.push(
           `logic ${this.lcIndex} 1 ${activatorId} ${op} ${left.type} ${left.value} ${right.type} ${right.value} 0`
         );
         this.lcIndex++;
-        break;
+        return resultIndex;
       }
       
       case 'LogicalExpression': {
         // Generate left condition
-        const leftId = this.lcIndex;
-        this.generateCondition(condition.left, activatorId);
+        const leftId = this.generateCondition(condition.left, activatorId);
         
         // Generate right condition
-        const rightId = this.lcIndex;
-        this.generateCondition(condition.right, activatorId);
+        const rightId = this.generateCondition(condition.right, activatorId);
         
         // Combine with logical operator
         const op = condition.operator === '&&' ? OPERATION.AND : OPERATION.OR;
+        const resultIndex = this.lcIndex;
         this.commands.push(
           `logic ${this.lcIndex} 1 ${activatorId} ${op} ${OPERAND_TYPE.GET_LC_VALUE} ${leftId} ${OPERAND_TYPE.GET_LC_VALUE} ${rightId} 0`
         );
         this.lcIndex++;
-        break;
+        return resultIndex;
       }
       
       case 'UnaryExpression': {
         // Generate argument
-        const argId = this.lcIndex;
-        this.generateCondition(condition.argument, activatorId);
+        const argId = this.generateCondition(condition.argument, activatorId);
         
         // Apply NOT
+        const resultIndex = this.lcIndex;
         this.commands.push(
           `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.NOT} ${OPERAND_TYPE.GET_LC_VALUE} ${argId} ${OPERAND_TYPE.VALUE} 0 0`
         );
         this.lcIndex++;
-        break;
+        return resultIndex;
       }
       
       case 'MemberExpression': {
@@ -361,15 +479,17 @@ class INAVCodeGenerator {
         const operand = this.getOperand(condition.value);
         
         // Check if true
+        const resultIndex = this.lcIndex;
         this.commands.push(
           `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.EQUAL} ${operand.type} ${operand.value} ${OPERAND_TYPE.VALUE} 1 0`
         );
         this.lcIndex++;
-        break;
+        return resultIndex;
       }
       
       case 'Literal': {
         // Literal true/false
+        const resultIndex = this.lcIndex;
         if (condition.value === true) {
           this.commands.push(
             `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.TRUE} ${OPERAND_TYPE.VALUE} 0 ${OPERAND_TYPE.VALUE} 0 0`
@@ -380,14 +500,13 @@ class INAVCodeGenerator {
           );
         }
         this.lcIndex++;
-        break;
+        return resultIndex;
       }
       
       default:
         console.warn(`Unknown condition type: ${condition.type}`);
+        return this.lcIndex;
     }
-    
-    return startIndex;
   }
   
   /**
@@ -430,6 +549,34 @@ class INAVCodeGenerator {
         );
         this.lcIndex++;
       }
+      return;
+    }
+    
+    // Handle rc channel assignment: rc[5] = 1500
+    // This is an alias for override.rcChannel(5, 1500)
+    if (target.startsWith('rc[')) {
+      const channelMatch = target.match(/rc\[(\d+)\]/);
+      if (!channelMatch) {
+        console.warn(`Invalid rc array syntax: ${target}`);
+        return;
+      }
+      
+      const channel = parseInt(channelMatch[1]);
+      
+      // Validate channel range
+      if (channel < 1 || channel > 18) {
+        console.warn(`RC channel ${channel} out of range (1-18)`);
+        return;
+      }
+      
+      const valueOperand = this.getOperand(value);
+      
+      // Generate RC_CHANNEL_OVERRIDE operation (38)
+      // operandA = channel number, operandB = value
+      this.commands.push(
+        `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.RC_CHANNEL_OVERRIDE} ${OPERAND_TYPE.VALUE} ${channel} ${valueOperand.type} ${valueOperand.value} 0`
+      );
+      this.lcIndex++;
       return;
     }
     
