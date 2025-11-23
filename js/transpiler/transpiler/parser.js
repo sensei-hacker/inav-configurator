@@ -1,8 +1,8 @@
 /**
  * INAV JavaScript Parser - With Native If Statement Support
- * 
+ *
  * Location: tabs/programming/transpiler/transpiler/parser.js
- * 
+ *
  * Supports REAL JavaScript including if statements!
  * Parses standard JavaScript including if/else statements and converts to INAV logic conditions.
  */
@@ -19,7 +19,7 @@ class JavaScriptParser {
   constructor() {
     this.warnings = [];
   }
-  
+
   /**
    * Parse JavaScript code
    * @param {string} code - JavaScript source code
@@ -27,7 +27,7 @@ class JavaScriptParser {
    */
   parse(code) {
     this.warnings = [];
-    
+
     try {
       // Parse with Acorn
       const acornAST = acorn.parse(code, {
@@ -36,7 +36,7 @@ class JavaScriptParser {
         locations: true,
         ranges: true
       });
-      
+
       // Transform to our simplified format
       const result = this.transformAST(acornAST);
       result.warnings = this.warnings;
@@ -51,13 +51,13 @@ class JavaScriptParser {
       throw new Error(`Parse error: ${error.message}`);
     }
   }
-  
+
   /**
    * Transform Acorn AST to simplified format
    */
   transformAST(acornAST) {
     const statements = [];
-    
+
     for (const node of acornAST.body) {
       const stmt = this.transformNode(node);
       if (stmt) {
@@ -68,16 +68,16 @@ class JavaScriptParser {
         }
       }
     }
-    
+
     return { statements };
   }
-  
+
   /**
    * Transform individual AST node
    */
   transformNode(node) {
     if (!node) return null;
-    
+
     switch (node.type) {
       case 'VariableDeclaration':
         return this.transformVariableDeclaration(node);
@@ -89,17 +89,17 @@ class JavaScriptParser {
         return null;
     }
   }
-  
+
   /**
    * Transform if statement to INAV logic conditions
    * This allows users to write real JavaScript!
    */
   transformIfStatement(node) {
     const results = [];
-    
+
     // Transform condition
     const condition = this.transformCondition(node.test);
-    
+
     // Transform consequent (if block)
     const thenBody = [];
     if (node.consequent) {
@@ -114,7 +114,7 @@ class JavaScriptParser {
         if (transformed) thenBody.push(transformed);
       }
     }
-    
+
     // Create logic condition for if block
     if (thenBody.length > 0) {
       results.push({
@@ -127,11 +127,11 @@ class JavaScriptParser {
         comment: 'Generated from if statement'
       });
     }
-    
+
     // Handle else block
     if (node.alternate) {
       const elseBody = [];
-      
+
       if (node.alternate.type === 'BlockStatement') {
         for (const stmt of node.alternate.body) {
           const transformed = this.transformBodyStatement(stmt);
@@ -146,7 +146,7 @@ class JavaScriptParser {
         const transformed = this.transformBodyStatement(node.alternate);
         if (transformed) elseBody.push(transformed);
       }
-      
+
       // Create logic condition for else block with inverted condition
       if (elseBody.length > 0) {
         results.push({
@@ -160,10 +160,10 @@ class JavaScriptParser {
         });
       }
     }
-    
+
     return results;
   }
-  
+
   /**
    * Invert a condition for else blocks
    * if (x > 5) {...} else {...}
@@ -171,12 +171,12 @@ class JavaScriptParser {
    */
   invertCondition(condition) {
     if (!condition) return null;
-    
+
     // If it's already a unary NOT, remove it
     if (condition.type === 'UnaryExpression' && condition.operator === '!') {
       return condition.argument;
     }
-    
+
     // Otherwise, wrap in NOT
     return {
       type: 'UnaryExpression',
@@ -184,7 +184,7 @@ class JavaScriptParser {
       argument: condition
     };
   }
-  
+
   /**
    * Transform variable declaration (const { flight } = inav)
    */
@@ -192,47 +192,75 @@ class JavaScriptParser {
     // Look for: const { ... } = inav
     if (node.declarations.length === 1) {
       const decl = node.declarations[0];
-      if (decl.id && decl.id.type === 'ObjectPattern' && 
-          decl.init && 
-          decl.init.type === 'Identifier' && 
+      if (decl.id && decl.id.type === 'ObjectPattern' &&
+          decl.init &&
+          decl.init.type === 'Identifier' &&
           decl.init.name === 'inav') {
-        return { 
+        return {
           type: 'Destructuring',
           loc: node.loc,
           range: node.range
         };
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Transform expression statement
    */
   transformExpressionStatement(node) {
     const expr = node.expression;
     if (!expr) return null;
-    
+
     // Look for function calls: on.arm(...), etc
     if (expr.type === 'CallExpression') {
       return this.transformCallExpression(expr, node.loc, node.range);
     }
-    
+
     // Look for assignments
     if (expr.type === 'AssignmentExpression') {
       return this.transformAssignment(expr, node.loc, node.range);
     }
-    
+
+    // Look for update expressions: gvar[0]++, gvar[0]--
+    if (expr.type === 'UpdateExpression') {
+      return this.transformUpdateExpression(expr, node.loc, node.range);
+    }
+
     return null;
   }
-  
+
+  /**
+   * Transform update expression (++ and --)
+   * Converts gvar[0]++ to gvar[0] = gvar[0] + 1
+   */
+  transformUpdateExpression(expr, loc, range) {
+    if (!expr.argument) return null;
+
+    const target = this.extractIdentifier(expr.argument);
+
+    // Convert ++ to +1, -- to -1
+    const operation = expr.operator === '++' ? '+' : '-';
+
+    return {
+      type: 'Assignment',
+      target,
+      operation,
+      left: target,
+      right: 1,
+      loc,
+      range
+    };
+  }
+
   /**
    * Transform call expression (event handlers)
    */
   transformCallExpression(expr, loc, range) {
     if (!expr.callee) return null;
-    
+
     // on.arm(...), on.always(...)
     if (expr.callee.type === 'MemberExpression' &&
         expr.callee.object && expr.callee.object.name === 'on' &&
@@ -240,19 +268,19 @@ class JavaScriptParser {
       const handler = `on.${expr.callee.property.name}`;
       return this.transformEventHandler(handler, expr.arguments, loc, range);
     }
-    
+
     // edge(...), sticky(...), delay(...), timer(...), whenChanged(...)
     if (expr.callee.type === 'Identifier') {
       const fnName = expr.callee.name;
-      if (fnName === 'edge' || fnName === 'sticky' || fnName === 'delay' || 
+      if (fnName === 'edge' || fnName === 'sticky' || fnName === 'delay' ||
           fnName === 'timer' || fnName === 'whenChanged') {
         return this.transformHelperFunction(fnName, expr.arguments, loc, range);
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Transform helper functions (edge, sticky, delay, timer, whenChanged)
    */
@@ -263,7 +291,7 @@ class JavaScriptParser {
     // delay(condition, durationMs, action)
     // timer(onMs, offMs, action)
     // whenChanged(value, threshold, action)
-    
+
     if (!args || args.length < 2) {
       this.warnings.push({
         type: 'warning',
@@ -272,7 +300,7 @@ class JavaScriptParser {
       });
       return null;
     }
-    
+
     return {
       type: 'EventHandler',
       handler: fnName,
@@ -282,7 +310,7 @@ class JavaScriptParser {
       range
     };
   }
-  
+
   /**
    * Transform event handler: on.arm({ delay: 1 }, () => { ... })
    */
@@ -296,16 +324,16 @@ class JavaScriptParser {
       });
       return null;
     }
-    
+
     const config = {};
     let bodyFunc = null;
-    
+
     // Parse arguments
     if (args.length === 2) {
       // First arg: config object
       if (args[0].type === 'ObjectExpression') {
         for (const prop of args[0].properties) {
-          if (prop.key && prop.key.name === 'delay' && 
+          if (prop.key && prop.key.name === 'delay' &&
               prop.value && prop.value.type === 'Literal') {
             config.delay = prop.value.value;
           }
@@ -315,7 +343,7 @@ class JavaScriptParser {
     } else if (args.length === 1) {
       bodyFunc = args[0];
     }
-    
+
     // Validate body function
     if (!bodyFunc || bodyFunc.type !== 'ArrowFunctionExpression') {
       this.warnings.push({
@@ -325,7 +353,7 @@ class JavaScriptParser {
       });
       return null;
     }
-    
+
     // Extract body from arrow function
     const body = [];
     const bodyNode = bodyFunc.body;
@@ -335,7 +363,7 @@ class JavaScriptParser {
         if (transformed) body.push(transformed);
       }
     }
-    
+
     return {
       type: 'EventHandler',
       handler,
@@ -345,13 +373,13 @@ class JavaScriptParser {
       range
     };
   }
-  
+
   /**
    * Transform condition expression
    */
   transformCondition(expr) {
     if (!expr) return null;
-    
+
     // Handle unary expressions: !condition
     if (expr.type === 'UnaryExpression') {
       return {
@@ -360,7 +388,7 @@ class JavaScriptParser {
         argument: this.transformCondition(expr.argument)
       };
     }
-    
+
     // Handle logical expressions: a && b, a || b
     if (expr.type === 'LogicalExpression') {
       return {
@@ -370,7 +398,7 @@ class JavaScriptParser {
         right: this.transformCondition(expr.right)
       };
     }
-    
+
     // Handle binary expressions: a > b, a === b
     if (expr.type === 'BinaryExpression') {
       return {
@@ -380,7 +408,7 @@ class JavaScriptParser {
         right: this.extractValue(expr.right)
       };
     }
-    
+
     // Handle member expressions: flight.mode.failsafe
     if (expr.type === 'MemberExpression') {
       return {
@@ -388,7 +416,7 @@ class JavaScriptParser {
         value: this.extractIdentifier(expr)
       };
     }
-    
+
     // Handle identifiers and literals
     if (expr.type === 'Identifier') {
       return {
@@ -396,30 +424,30 @@ class JavaScriptParser {
         value: expr.name
       };
     }
-    
+
     if (expr.type === 'Literal') {
       return {
         type: 'Literal',
         value: expr.value
       };
     }
-    
+
     return null;
   }
-  
+
   /**
    * Transform body statement
    */
   transformBodyStatement(stmt) {
     if (!stmt) return null;
-    
+
     if (stmt.type === 'ExpressionStatement') {
       const expr = stmt.expression;
       if (expr && expr.type === 'AssignmentExpression') {
         return this.transformAssignment(expr, stmt.loc, stmt.range);
       }
     }
-    
+
     // Support nested if statements in bodies
     if (stmt.type === 'IfStatement') {
       // For nested ifs, we need to flatten them
@@ -431,24 +459,24 @@ class JavaScriptParser {
       // Return null here - nested ifs need special handling at a higher level
       return null;
     }
-    
+
     return null;
   }
-  
+
   /**
    * Transform assignment: gvar[0] = value
    */
   transformAssignment(expr, loc, range) {
     if (!expr.left || !expr.right) return null;
-    
+
     const target = this.extractIdentifier(expr.left);
     const rightExpr = expr.right;
-    
+
     // Check if right side is binary expression (could be arithmetic or comparison)
     if (rightExpr.type === 'BinaryExpression') {
       const operator = rightExpr.operator;
       const arithmeticOps = ['+', '-', '*', '/', '%'];
-      
+
       if (arithmeticOps.includes(operator)) {
         return {
           type: 'Assignment',
@@ -461,7 +489,7 @@ class JavaScriptParser {
         };
       }
     }
-    
+
     // Simple assignment
     return {
       type: 'Assignment',
@@ -471,59 +499,59 @@ class JavaScriptParser {
       range
     };
   }
-  
+
   /**
    * Extract identifier/property path from expression
    */
   extractIdentifier(expr) {
     if (!expr) return '';
-    
+
     if (expr.type === 'Identifier') {
       return expr.name;
     }
-    
+
     if (expr.type === 'MemberExpression') {
       const object = this.extractIdentifier(expr.object);
-      
+
       if (expr.computed) {
         // Computed access: gvar[0] or obj[prop]
         const property = this.extractValue(expr.property);
         return `${object}[${property}]`;
       } else {
         // Dot access: flight.altitude
-        const property = expr.property && expr.property.name ? 
+        const property = expr.property && expr.property.name ?
           expr.property.name : '';
         return property ? `${object}.${property}` : object;
       }
     }
-    
+
     return '';
   }
-  
+
   /**
    * Extract value from expression
    */
   extractValue(expr) {
     if (!expr) return null;
-    
+
     if (expr.type === 'Literal') {
       return expr.value;
     }
-    
+
     if (expr.type === 'Identifier') {
       return expr.name;
     }
-    
+
     if (expr.type === 'MemberExpression') {
       return this.extractIdentifier(expr);
     }
-    
+
     if (expr.type === 'UnaryExpression' && expr.operator === '-') {
       // Handle negative numbers
       const val = this.extractValue(expr.argument);
       return typeof val === 'number' ? -val : val;
     }
-    
+
     return null;
   }
 }

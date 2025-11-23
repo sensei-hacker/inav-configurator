@@ -2,9 +2,9 @@
 'use strict';
 
  * INAV Logic Condition Optimizer
- * 
+ *
  * Location: tabs/programming/transpiler/transpiler/optimizer.js
- * 
+ *
  * Optimizes the AST to reduce the number of logic conditions needed.
  * Key optimizations:
  * 1. Common Subexpression Elimination (CSE)
@@ -24,7 +24,7 @@ class Optimizer {
       booleansSimplified: 0
     };
   }
-  
+
   /**
    * Optimize analyzed AST
    * @param {Object} ast - Analyzed AST
@@ -38,38 +38,37 @@ class Optimizer {
       gvarsInlined: 0,
       booleansSimplified: 0
     };
-    
+
     // Multiple optimization passes
     let changed = true;
     let passes = 0;
     const maxPasses = 5;
-    
+
     while (changed && passes < maxPasses) {
       const before = JSON.stringify(ast);
-      
+
       // Phase 1: Simplifications
       ast = this.foldConstants(ast);
       ast = this.simplifyBooleans(ast);
       ast = this.eliminateDeadCode(ast);
-      
-      
+
       // Phase 2: Inlining
-      // Needs a local decorator or something
+      // Needs a local decorator
       // ast = this.inlineSimpleGVARs(ast);
-      
+
       const after = JSON.stringify(ast);
       changed = (before !== after);
       passes++;
     }
-    
+
     // Phase 3: CSE (MUST run last to avoid broken references)
     // CSE adds metadata that points to statement objects,
     // so it must run after all optimizations that create new statement objects
     ast = this.eliminateCommonSubexpressions(ast);
-    
+
     return ast;
   }
-  
+
   /**
    * Common Subexpression Elimination
    * Find duplicate conditions and reuse them
@@ -79,17 +78,17 @@ class Optimizer {
     const conditionMap = new Map(); // condition string -> first LC index
     const invertedMap = new Map(); // base condition string -> inverted LC index
     const statements = [];
-    
+
     for (const statement of ast.statements) {
       if (statement.type === 'EventHandler' && statement.condition) {
         const condition = statement.condition;
-        
+
         // Check if this is an inverted condition
         const isInverted = condition.type === 'UnaryExpression' && condition.operator === '!';
         const baseCondition = isInverted ? condition.argument : condition;
         const baseKey = this.getConditionKey(baseCondition);
         const fullKey = this.getConditionKey(condition);
-        
+
         // Check if we've seen the exact same condition before
         if (conditionMap.has(fullKey)) {
           const existingStatement = conditionMap.get(fullKey);
@@ -113,20 +112,20 @@ class Optimizer {
         else {
           // First time seeing this condition
           conditionMap.set(fullKey, statement);
-          
+
           // Also track base condition for inverted matching
           if (isInverted) {
             invertedMap.set(baseKey, statement);
           }
         }
       }
-      
+
       statements.push(statement);
     }
-    
+
     return { ...ast, statements };
   }
-  
+
   /**
    * Generate a unique key for a condition
    */
@@ -134,32 +133,32 @@ class Optimizer {
     if (condition.type === 'BinaryExpression') {
       return `${condition.left}${condition.operator}${condition.right}`;
     }
-    
+
     if (condition.type === 'LogicalExpression') {
       const left = this.getConditionKey(condition.left);
       const right = this.getConditionKey(condition.right);
       return `${left}${condition.operator}${right}`;
     }
-    
+
     if (condition.type === 'UnaryExpression') {
       const arg = this.getConditionKey(condition.argument);
       return `${condition.operator}${arg}`;
     }
-    
+
     if (condition.type === 'MemberExpression') {
       return condition.value;
     }
-    
+
     return JSON.stringify(condition);
   }
-  
+
   /**
    * Dead Code Elimination
    * Remove unreachable or always-false conditions
    */
   eliminateDeadCode(ast) {
     const statements = [];
-    
+
     for (const statement of ast.statements) {
       // Remove handlers with always-false conditions
       if (statement.type === 'EventHandler' && statement.condition) {
@@ -167,26 +166,26 @@ class Optimizer {
           this.stats.deadCodeRemoved++;
           continue; // Skip this statement
         }
-        
+
         // Simplify always-true conditions
         if (this.isAlwaysTrue(statement.condition)) {
           statement.condition = null; // Remove condition (always executes)
           this.stats.deadCodeRemoved++;
         }
       }
-      
-      // Remove empty event handlers
-      if (statement.type === 'EventHandler' && statement.body.length === 0) {
+
+      // Remove empty event handlers (only for handlers with body, not args-based handlers like edge/sticky/delay)
+      if (statement.type === 'EventHandler' && statement.body && statement.body.length === 0) {
         this.stats.deadCodeRemoved++;
         continue;
       }
-      
+
       statements.push(statement);
     }
-    
+
     return { ...ast, statements };
   }
-  
+
   /**
    * Check if condition is always true
    */
@@ -204,14 +203,14 @@ class Optimizer {
         }
       }
     }
-    
+
     if (condition.value === 'true' || condition.value === true) {
       return true;
     }
-    
+
     return false;
   }
-  
+
   /**
    * Check if condition is always false
    */
@@ -226,14 +225,14 @@ class Optimizer {
         }
       }
     }
-    
+
     if (condition.value === 'false' || condition.value === false) {
       return true;
     }
-    
+
     return false;
   }
-  
+
   /**
    * Constant Folding
    * Evaluate constant expressions at compile time
@@ -248,7 +247,7 @@ class Optimizer {
             statement.left,
             statement.right
           );
-          
+
           if (result !== null) {
             this.stats.constantsFolded++;
             return {
@@ -259,13 +258,13 @@ class Optimizer {
           }
         }
       }
-      
+
       return statement;
     });
-    
+
     return { ...ast, statements };
   }
-  
+
   /**
    * Evaluate arithmetic operation
    */
@@ -279,7 +278,7 @@ class Optimizer {
       default: return null;
     }
   }
-  
+
   /**
    * Inline Simple GVARs
    * If a GVAR is set once and used once, inline it
@@ -288,7 +287,7 @@ class Optimizer {
     // Track GVAR usage
     const gvarSets = new Map(); // gvar index -> value
     const gvarUses = new Map(); // gvar index -> count
-    
+
     // First pass: count sets and uses
     for (const statement of ast.statements) {
       if (statement.type === 'EventHandler') {
@@ -303,7 +302,7 @@ class Optimizer {
                 gvarSets.set(index, null); // Multiple sets, don't inline
               }
             }
-            
+
             // GVAR use
             if (typeof bodyStmt.value === 'string' && bodyStmt.value.startsWith('gvar[')) {
               const index = this.extractGVARIndex(bodyStmt.value);
@@ -313,7 +312,7 @@ class Optimizer {
         }
       }
     }
-    
+
     // Second pass: inline if set once and used once
     const inlineMap = new Map();
     for (const [index, value] of gvarSets.entries()) {
@@ -322,7 +321,7 @@ class Optimizer {
         this.stats.gvarsInlined++;
       }
     }
-    
+
     // Third pass: apply inlining
     const statements = ast.statements.map(statement => {
       if (statement.type === 'EventHandler') {
@@ -337,8 +336,8 @@ class Optimizer {
           return true;
         }).map(bodyStmt => {
           // Replace GVAR use with value
-          if (bodyStmt.type === 'Assignment' && 
-              typeof bodyStmt.value === 'string' && 
+          if (bodyStmt.type === 'Assignment' &&
+              typeof bodyStmt.value === 'string' &&
               bodyStmt.value.startsWith('gvar[')) {
             const index = this.extractGVARIndex(bodyStmt.value);
             if (inlineMap.has(index)) {
@@ -350,15 +349,15 @@ class Optimizer {
           }
           return bodyStmt;
         });
-        
+
         return { ...statement, body };
       }
       return statement;
     });
-    
+
     return { ...ast, statements };
   }
-  
+
   /**
    * Extract GVAR index from string like "gvar[0]"
    */
@@ -366,7 +365,7 @@ class Optimizer {
     const match = str.match(/gvar\[(\d+)\]/);
     return match ? parseInt(match[1]) : -1;
   }
-  
+
   /**
    * Boolean Simplification
    * Simplify boolean expressions
@@ -393,10 +392,10 @@ class Optimizer {
       }
       return statement;
     });
-    
+
     return { ...ast, statements };
   }
-  
+
   /**
    * Simplify a condition
    */
@@ -415,7 +414,7 @@ class Optimizer {
           return { type: 'MemberExpression', value: 'false' };
         }
       }
-      
+
       // Simplify: a || true -> true
       if (condition.operator === '||') {
         if (this.isAlwaysTrue(condition.right) || this.isAlwaysTrue(condition.left)) {
@@ -430,53 +429,53 @@ class Optimizer {
         }
       }
     }
-    
+
     return condition;
   }
-  
+
   /**
    * Get optimization statistics
    */
   getStats() {
     const total = Object.values(this.stats).reduce((sum, val) => sum + val, 0);
-    
+
     return {
       ...this.stats,
       total,
       report: this.generateReport()
     };
   }
-  
+
   /**
    * Generate optimization report
    */
   generateReport() {
     const lines = [];
-    
+
     if (this.stats.cseEliminated > 0) {
       lines.push(`  - Common subexpression elimination: ${this.stats.cseEliminated} LC(s) saved`);
     }
-    
+
     if (this.stats.deadCodeRemoved > 0) {
       lines.push(`  - Dead code elimination: ${this.stats.deadCodeRemoved} LC(s) saved`);
     }
-    
+
     if (this.stats.constantsFolded > 0) {
       lines.push(`  - Constant folding: ${this.stats.constantsFolded} operation(s) simplified`);
     }
-    
+
     if (this.stats.gvarsInlined > 0) {
       lines.push(`  - GVAR inlining: ${this.stats.gvarsInlined} LC(s) saved`);
     }
-    
+
     if (this.stats.booleansSimplified > 0) {
       lines.push(`  - Boolean simplification: ${this.stats.booleansSimplified} condition(s) simplified`);
     }
-    
+
     if (lines.length === 0) {
       return '  - No optimizations applied (code already optimal)';
     }
-    
+
     return lines.join('\n');
   }
 }

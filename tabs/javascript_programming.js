@@ -1,6 +1,6 @@
 /**
  * INAV JavaScript Programming Tab
- * 
+ *
  * Integrates Monaco Editor with INAV transpiler and MSP communication.
  */
 
@@ -25,39 +25,39 @@ TABS.javascript_programming = {
     transpiler: null,
     decompiler: null,
     currentCode: '',
-    
+
     analyticsChanges: {},
 
     initialize: function (callback) {
         const self = this;
-        
+
         if (GUI.active_tab !== 'javascript_programming') {
             GUI.active_tab = 'javascript_programming';
         }
 
         $('#content').load("./tabs/javascript_programming.html", function () {
-    
+
         self.initTranspiler();
-    
+
         MonacoLoader.loadMonacoEditor()
             .then(function(monaco) {
                 // Initialize editor with INAV configuration
                 self.editor = MonacoLoader.initializeMonacoEditor(monaco, 'monaco-editor');
-                
+
                 // Add INAV type definitions
                 MonacoLoader.addINAVTypeDefinitions(monaco);
-                
+
                 // Set up linting
                 MonacoLoader.setupLinting(self.editor, function() {
                     if (self.lintCode) {
                         self.lintCode();
                     }
                 });
-                
+
                 // Continue with initialization
                 self.setupEventHandlers();
                 self.loadExamples();
-                
+
                 self.loadFromFC(function() {
                     self.isDirty = false;
                     GUI.content_ready(callback);
@@ -71,7 +71,7 @@ TABS.javascript_programming = {
 
         });
     },
-    
+
     /**
      * Initialize transpiler and decompiler
      */
@@ -82,7 +82,7 @@ TABS.javascript_programming = {
             console.error('Transpiler not loaded');
             GUI.log(i18n.getMessage('transpilerNotAvailable') || 'JavaScript transpiler not available');
         }
-    
+
         if (typeof Decompiler !== 'undefined') {
             this.decompiler = new Decompiler();
         } else {
@@ -99,9 +99,9 @@ TABS.javascript_programming = {
                     resolve(window.monaco);
                     return;
                 }
-                
+
                 const path = require('path');
-                
+
                 // Find monaco-editor path
                 let monacoBasePath;
                 try {
@@ -109,24 +109,24 @@ TABS.javascript_programming = {
                 } catch (e) {
                     monacoBasePath = path.join(__dirname, '../node_modules/monaco-editor');
                 }
-                
+
                 // Use the min build which includes everything
                 const vsPath = path.join(monacoBasePath, 'min/vs');
                 const loaderPath = path.join(vsPath, 'loader.js');
                 const editorMainPath = path.join(vsPath, 'editor/editor.main.js');
-                
+
                 console.log('Loading Monaco from:', vsPath);
-                
+
                 // Method 1: Try loading editor.main.js directly
                 const editorScript = document.createElement('script');
                 editorScript.src = 'file://' + editorMainPath.replace(/\\/g, '/');
-                
+
                 editorScript.onerror = () => {
                     // Method 2: If direct load fails, try AMD loader with workaround
                     console.log('Direct load failed, trying AMD loader...');
                     this.loadMonacoViaAMD(vsPath, resolve, reject);
                 };
-                
+
                 editorScript.onload = () => {
                     if (window.monaco) {
                         console.log('Monaco loaded via direct script');
@@ -135,16 +135,16 @@ TABS.javascript_programming = {
                         this.loadMonacoViaAMD(vsPath, resolve, reject);
                     }
                 };
-                
+
                 document.head.appendChild(editorScript);
-                
+
             } catch (error) {
                 console.error('Failed to load Monaco Editor:', error);
                 reject(error);
             }
         });
     },
-    
+
     loadMonacoViaAMD: function(vsPath, resolve, reject) {
         // Set global MonacoEnvironment before loading
         window.MonacoEnvironment = {
@@ -157,14 +157,14 @@ TABS.javascript_programming = {
                 `)}`;
             }
         };
-        
+
         const loaderScript = document.createElement('script');
         loaderScript.src = 'file://' + vsPath.replace(/\\/g, '/') + '/loader.js';
-        
+
         loaderScript.onerror = () => {
             reject(new Error('Failed to load Monaco loader.js'));
         };
-        
+
         loaderScript.onload = () => {
             try {
                 // Configure the loader
@@ -176,18 +176,18 @@ TABS.javascript_programming = {
                         availableLanguages: {}
                     }
                 });
-                
+
                 // Load the editor - FIXED: properly handle the callback
                 window.require(['vs/editor/editor.main'], function() {
                     // Monaco is now available as a global
                     const monaco = window.monaco;
-                    
+
                     if (!monaco || !monaco.editor) {
                         console.error('Monaco object not properly initialized');
                         reject(new Error('Monaco editor object not found'));
                         return;
                     }
-                    
+
                     console.log('Monaco loaded via AMD, editor object:', monaco.editor);
                     resolve(monaco);
                 }, function(err) {
@@ -198,20 +198,20 @@ TABS.javascript_programming = {
                 reject(err);
             }
         };
-        
+
         document.head.appendChild(loaderScript);
     },
 
     initializeMonacoEditor: function(monaco) {
         const self = this;
-        
+
         // Create editor
         const editorContainer = document.getElementById('monaco-editor');
         if (!editorContainer) {
             console.error('Monaco editor container not found');
             return;
         }
-        
+
         self.editor = monaco.editor.create(editorContainer, {
             value: '// INAV JavaScript Programming\n// Write JavaScript, get INAV logic conditions!\n\nconst { flight, override, rc, gvar, on } = inav;\n\n// Example:\n// if (flight.homeDistance > 100) {\n//   override.vtx.power = 3;\n// }\n',
             language: 'javascript',
@@ -225,13 +225,13 @@ TABS.javascript_programming = {
             tabSize: 2,
             insertSpaces: true
         });
-        
+
         // Set up TypeScript/JavaScript defaults for IntelliSense
         monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
             noSemanticValidation: false,
             noSyntaxValidation: false
         });
-        
+
         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
             target: monaco.languages.typescript.ScriptTarget.ES2020,
             allowNonTsExtensions: true,
@@ -242,13 +242,13 @@ TABS.javascript_programming = {
             allowJs: true,
             checkJs: false
         });
-        
+
         // Add INAV API type definitions
         try {
             const apiDefinitions = require('./transpiler/api/definitions/index.js');
             const { generateTypeDefinitions } = require('./transpiler/api/types.js');
             const typeDefinitions = generateTypeDefinitions(apiDefinitions);
-            
+
             monaco.languages.typescript.javascriptDefaults.addExtraLib(
                 typeDefinitions,
                 'ts:inav.d.ts'
@@ -257,7 +257,7 @@ TABS.javascript_programming = {
         } catch (error) {
             console.error('Failed to load INAV type definitions:', error);
         }
-        
+
         // Set up real-time linting (debounced)
         let lintTimeout;
         self.editor.onDidChangeModelContent(() => {
@@ -268,7 +268,7 @@ TABS.javascript_programming = {
                 }
             }, 500);
         });
-        
+
         console.log('Monaco Editor initialized successfully');
     },
 
@@ -277,24 +277,24 @@ TABS.javascript_programming = {
      */
     setupMonaco: function(monaco) {
         const self = this;
-        
+
         // Store monaco reference
         window.monacoInstance = monaco;
-        
+
         // Configure JavaScript defaults
         monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
             noSemanticValidation: false,
             noSyntaxValidation: false
         });
-        
+
         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
             target: monaco.languages.typescript.ScriptTarget.ES2020,
             allowNonTsExtensions: true
         });
-        
+
         // Add INAV API type definitions
         this.addINAVTypeDefinitions(monaco);
-        
+
         // Create editor
         this.editor = monaco.editor.create(document.getElementById('monaco-editor'), {
             value: this.getDefaultCode(),
@@ -316,13 +316,13 @@ TABS.javascript_programming = {
                 horizontal: 'visible'
             }
         });
-        
+
         // Track changes
         this.editor.onDidChangeModelContent(() => {
             self.isDirty = true;
             self.currentCode = self.editor.getValue();
         });
-        
+
         // Auto-transpile on Ctrl+S
         this.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
             self.transpileCode();
@@ -335,7 +335,7 @@ TABS.javascript_programming = {
     createFallbackEditor: function() {
         const container = document.getElementById('monaco-editor');
         container.innerHTML = '';
-        
+
         const textarea = document.createElement('textarea');
         textarea.style.width = '100%';
         textarea.style.height = '100%';
@@ -347,9 +347,9 @@ TABS.javascript_programming = {
         textarea.style.backgroundColor = '#1e1e1e';
         textarea.style.color = '#d4d4d4';
         textarea.value = this.getDefaultCode();
-        
+
         container.appendChild(textarea);
-        
+
         // Create a simple editor interface
         const self = this;
         this.editor = {
@@ -359,15 +359,15 @@ TABS.javascript_programming = {
             addCommand: () => {},
             dispose: () => {}
         };
-        
+
         textarea.addEventListener('input', function() {
             self.isDirty = true;
             self.currentCode = textarea.value;
         });
-        
+
         GUI.log('Using fallback text editor (Monaco failed to load)');
     },
-    
+
     /**
      * Add INAV API type definitions for autocomplete
      */
@@ -407,14 +407,14 @@ TABS.javascript_programming = {
                     airmode: boolean;
                 };
             }
-            
+
             interface RCChannel {
                 value: number;
                 low: boolean;
                 mid: boolean;
                 high: boolean;
             }
-            
+
             interface Override {
                 throttleScale: number;
                 throttle: number;
@@ -429,18 +429,18 @@ TABS.javascript_programming = {
                 minGroundSpeed: number;
                 rcChannel: (channel: number, value: number) => void;
             }
-            
+
             const flight: Flight;
             const rc: RCChannel[];
             const override: Override;
             const gvar: number[];
             const waypoint: any;
-            
+
             function edge(condition: () => boolean, config: { duration: number }, action: () => void): void;
             function sticky(onCondition: () => boolean, offCondition: () => boolean, action: () => void): void;
             function delay(condition: () => boolean, config: { duration: number }, action: () => void): void;
         }
-        
+
         declare const inav: typeof inav;
         `;
         monaco.languages.typescript.javascriptDefaults.addExtraLib(
@@ -448,7 +448,7 @@ TABS.javascript_programming = {
             'ts:inav.d.ts'
         );
     },
-    
+
     /**
      * Get default starter code
      */
@@ -472,22 +472,22 @@ if (flight.homeDistance > 100) {
      */
     setupEventHandlers: function() {
         const self = this;
-        
+
         // Transpile button
         $('.tab-programming .transpile').click(function() {
             self.transpileCode();
         });
-        
+
         // Load from FC button
         $('.tab-programming .load').click(function() {
             self.loadFromFC();
         });
-        
+
         // Save to FC button
         $('.tab-programming .save').click(function() {
             self.saveToFC();
         });
-        
+
         // Clear button
         $('.tab-programming .clear').click(function() {
             if (confirm('Clear editor? This cannot be undone.')) {
@@ -495,7 +495,7 @@ if (flight.homeDistance > 100) {
                 self.isDirty = false;
             }
         });
-        
+
         // Example selector
         $('#js-example-select').change(function() {
             const exampleId = $(this).val();
@@ -504,13 +504,13 @@ if (flight.homeDistance > 100) {
                 $(this).val(''); // Reset selector
             }
         });
-        
+
         // API Reference toggle
         $('#api-reference-toggle').click(function(e) {
             e.preventDefault();
             const content = $('#api-reference-content');
             const toggle = $(this);
-            
+
             if (content.is(':visible')) {
                 content.slideUp();
                 toggle.text('▶ API Reference & Examples');
@@ -520,7 +520,7 @@ if (flight.homeDistance > 100) {
             }
         });
     },
-    
+
     /*
     **
      * Load a specific example into the editor
@@ -528,7 +528,7 @@ if (flight.homeDistance > 100) {
      */
     loadExample: function(exampleId) {
         const self = this;
-        
+
         try {
             const examples = require('./../js/transpiler/examples/index.js');
 
@@ -536,9 +536,9 @@ if (flight.homeDistance > 100) {
                 console.error('Example not found:', exampleId);
                 return;
             }
-            
+
             const example = examples[exampleId];
-            
+
             // Set the code in the editor
             if (self.editor && self.editor.setValue) {
                 self.editor.setValue(example.code);
@@ -546,36 +546,36 @@ if (flight.homeDistance > 100) {
             } else {
                 console.error('Editor not initialized');
             }
-            
+
             // Mark as dirty since we changed the code
             self.isDirty = true;
-            
+
         } catch (error) {
             console.error('Failed to load example:', error);
         }
     },
-    
+
     /**
      * Load and populate the examples dropdown
      */
     loadExamples: function() {
         const self = this;
-        
+
         try {
             const examples = require('../js/transpiler/examples/index.js');
             const $examplesSelect = $('#examples-select');
-            
+
             if (!$examplesSelect.length) {
                 console.warn('Examples dropdown not found');
                 return;
             }
-            
+
             // Clear existing options
             $examplesSelect.empty();
-            
+
             // Add default option
             $examplesSelect.append('<option value="">-- Select Example --</option>');
-            
+
             // Group examples by category
             const categories = {};
             for (const [id, example] of Object.entries(examples)) {
@@ -585,11 +585,11 @@ if (flight.homeDistance > 100) {
                 }
                 categories[category].push({ id, ...example });
             }
-            
+
             // Add examples grouped by category
             for (const [category, exampleList] of Object.entries(categories).sort()) {
                 const $optgroup = $('<optgroup>').attr('label', category);
-                
+
                 for (const example of exampleList) {
                     $optgroup.append(
                         $('<option>')
@@ -598,10 +598,10 @@ if (flight.homeDistance > 100) {
                             .attr('title', example.description)
                     );
                 }
-                
+
                 $examplesSelect.append($optgroup);
             }
-            
+
             // Set up change handler
             $examplesSelect.off('change').on('change', function() {
                 const exampleId = $(this).val();
@@ -609,32 +609,32 @@ if (flight.homeDistance > 100) {
                     self.loadExample(exampleId);
                 }
             });
-            
+
             console.log('Examples dropdown populated with', Object.keys(examples).length, 'examples');
-            
+
         } catch (error) {
             console.error('Failed to load examples:', error);
         }
     },
 
-    
+
     /**
      * Transpile JavaScript to INAV logic conditions
      */
     transpileCode: function() {
         const self = this;
         const code = this.editor.getValue();
-        
+
         if (!this.transpiler) {
             GUI.log(i18n.getMessage('transpilerNotAvailable') || 'Transpiler not available');
             return;
         }
-        
+
         GUI.log(i18n.getMessage('transpiling') || 'Transpiling JavaScript...');
-        
+
         try {
             const result = this.transpiler.transpile(code);
-            
+
             if (result.success) {
                 // Display output
                 const formattedOutput = this.transpiler.formatOutput(
@@ -643,10 +643,10 @@ if (flight.homeDistance > 100) {
                     result.optimizations
                 );
                 $('#transpiler-output').val(formattedOutput);
-                
+
                 // Update LC count
                 this.updateLCCount(result.logicConditionCount);
-                
+
                 // Show optimization stats
                 if (result.optimizations && result.optimizations.total > 0) {
                     $('#optimization-details').text(result.optimizations.report);
@@ -654,36 +654,36 @@ if (flight.homeDistance > 100) {
                 } else {
                     $('#optimization-stats').hide();
                 }
-                
+
                 // Show warnings if any
-                if (result.warnings && (result.warnings.errors.length > 0 || 
+                if (result.warnings && (result.warnings.errors.length > 0 ||
                     result.warnings.warnings.length > 0)) {
                     this.showWarnings(result.warnings);
                 } else {
                     $('#transpiler-warnings').hide();
                 }
-                
+
                 GUI.log(`Transpiled successfully: ${result.logicConditionCount}/64 logic conditions`);
-                
+
             } else {
                 // Show error
                 this.showError(result.error);
                 GUI.log('Transpilation failed: ' + result.error);
             }
-            
+
         } catch (error) {
             this.showError(error.message);
             console.error('Transpilation error:', error);
         }
     },
-    
+
     /**
      * Update LC count display
      */
     updateLCCount: function(count) {
         const el = $('#lc-count');
         el.text(`${count}/64 LCs`);
-        
+
         // Color code based on usage
         el.removeClass('warning error');
         if (count > 64) {
@@ -692,7 +692,7 @@ if (flight.homeDistance > 100) {
             el.addClass('warning');
         }
     },
-    
+
     /**
      * Show transpilation error
      */
@@ -708,14 +708,14 @@ if (flight.homeDistance > 100) {
         `);
         warningsDiv.show();
     },
-    
+
     /**
      * Show transpilation/decompilation warnings
      */
     showWarnings: function(warnings) {
         const warningsDiv = $('#transpiler-warnings');
         let html = '';
-        
+
         if (warnings.errors && warnings.errors.length > 0) {
             html += '<div class="note error"><div class="note_spacer">';
             html += '<strong>Errors:</strong><ul style="margin: 5px 0; padding-left: 20px;">';
@@ -724,7 +724,7 @@ if (flight.homeDistance > 100) {
             });
             html += '</ul></div></div>';
         }
-        
+
         if (warnings.warnings && warnings.warnings.length > 0) {
             html += '<div class="note warning"><div class="note_spacer">';
             html += '<strong>Warnings:</strong><ul style="margin: 5px 0; padding-left: 20px;">';
@@ -733,33 +733,33 @@ if (flight.homeDistance > 100) {
             });
             html += '</ul></div></div>';
         }
-        
+
         warningsDiv.html(html);
         warningsDiv.show();
     },
-    
+
     /**
      * Show decompiler warnings
      */
     showDecompilerWarnings: function(warnings) {
         const warningsDiv = $('#transpiler-warnings');
-        
+
         let html = '<div class="note warning"><div class="note_spacer">';
         html += '<strong>Decompilation Warnings:</strong><br>';
         html += '<ul style="margin: 5px 0; padding-left: 20px;">';
-        
+
         for (const warning of warnings) {
             html += `<li>${this.escapeHtml(warning)}</li>`;
         }
-        
+
         html += '</ul>';
         html += '<p style="margin-top: 10px;"><em>Please review the generated code carefully and test before using.</em></p>';
         html += '</div></div>';
-        
+
         warningsDiv.html(html);
         warningsDiv.show();
     },
-    
+
     /**
      * Escape HTML to prevent XSS
      */
@@ -768,45 +768,45 @@ if (flight.homeDistance > 100) {
         div.textContent = text;
         return div.innerHTML;
     },
-    
+
     /**
      * Load logic conditions from FC and decompile to JavaScript
      * Uses MSP chaining pattern from programming.js
      */
     loadFromFC: function(callback) {
         const self = this;
-        
+
         if (!this.decompiler) {
             GUI.log(i18n.getMessage('decompilerNotAvailable') || 'Decompiler not available');
             if (callback) callback();
             return;
         }
-        
+
         GUI.log(i18n.getMessage('loadingFromFC') || 'Loading logic conditions from flight controller...');
-        
+
         // Create MSP chainer for loading logic conditions
         const loadChainer = new MSPChainerClass();
-        
+
         loadChainer.setChain([
             mspHelper.loadLogicConditions
         ]);
-        
+
         loadChainer.setExitPoint(function() {
             self.onLogicConditionsLoaded(callback);
         });
-        
+
         loadChainer.execute();
     },
-    
+
     /**
      * Called after logic conditions are loaded from FC
      */
     onLogicConditionsLoaded: function(callback) {
         const self = this;
-        
+
         // Get logic conditions from FC object
         const logicConditions = self.getLogicConditionsArray();
-        
+
         if (!logicConditions || logicConditions.length === 0) {
             GUI.log(i18n.getMessage('noLogicConditions') || 'No logic conditions found on FC');
             self.editor.setValue(self.getDefaultCode());
@@ -814,17 +814,17 @@ if (flight.homeDistance > 100) {
             if (callback) callback();
             return;
         }
-        
+
         GUI.log(`Found ${logicConditions.length} logic conditions, decompiling...`);
-        
+
         // Decompile to JavaScript
         try {
             const result = self.decompiler.decompile(logicConditions);
-            
+
             if (result.success) {
                 // Set the decompiled code
                 self.editor.setValue(result.code);
-                
+
                 // Show stats
                 if (result.stats) {
                     GUI.log(
@@ -832,14 +832,14 @@ if (flight.homeDistance > 100) {
                         `logic conditions into ${result.stats.groups} handler(s)`
                     );
                 }
-                
+
                 // Show warnings if any
                 if (result.warnings && result.warnings.length > 0) {
                     self.showDecompilerWarnings(result.warnings);
                 } else {
                     $('#transpiler-warnings').hide();
                 }
-                
+
                 self.isDirty = false;
             } else {
                 // Decompilation failed
@@ -848,7 +848,7 @@ if (flight.homeDistance > 100) {
                 self.editor.setValue(result.code || self.getDefaultCode());
                 self.isDirty = false;
             }
-            
+
         } catch (error) {
             console.error('Decompilation error:', error);
             GUI.log('Decompilation error: ' + error.message);
@@ -856,46 +856,46 @@ if (flight.homeDistance > 100) {
             self.editor.setValue(self.getDefaultCode());
             self.isDirty = false;
         }
-        
+
         if (callback) callback();
     },
-    
+
     /**
      * Get logic conditions array from FC.LOGIC_CONDITIONS
      */
     getLogicConditionsArray: function() {
         const conditions = [];
-        
+
         // FC.LOGIC_CONDITIONS stores logic conditions
         if (!FC.LOGIC_CONDITIONS || !FC.LOGIC_CONDITIONS.get) {
             console.error('FC.LOGIC_CONDITIONS not available');
             return conditions;
         }
-        
+
         // Get count of logic conditions
-        const count = FC.LOGIC_CONDITIONS.getCount ? 
+        const count = FC.LOGIC_CONDITIONS.getCount ?
             FC.LOGIC_CONDITIONS.getCount() : 64; // Max 64 logic conditions
-        
+
         for (let i = 0; i < count; i++) {
-            const lc = FC.LOGIC_CONDITIONS.get(i);
+            const lc = FC.LOGIC_CONDITIONS.get()[i];
             if (lc) {
                 conditions.push({
                     index: i,
-                    enabled: lc.enabled,
-                    activatorId: lc.activatorId,
-                    operation: lc.operation,
-                    operandAType: lc.operandAType,
-                    operandAValue: lc.operandAValue,
-                    operandBType: lc.operandBType,
-                    operandBValue: lc.operandBValue,
-                    flags: lc.flags || 0
+                    enabled: lc.getEnabled(),
+                    activatorId: lc.getActivatorId(),
+                    operation: lc.getOperation(),
+                    operandAType: lc.getOperandAType(),
+                    operandAValue: lc.getOperandAValue(),
+                    operandBType: lc.getOperandBType(),
+                    operandBValue: lc.getOperandBValue(),
+                    flags: lc.getFlags()
                 });
             }
         }
-        
+
         return conditions;
     },
-    
+
     /**
      * Save transpiled logic conditions to FC
      * Uses MSP chaining pattern from programming.js
@@ -903,38 +903,38 @@ if (flight.homeDistance > 100) {
     saveToFC: function() {
         const self = this;
         const code = this.editor.getValue();
-        
+
         if (!this.transpiler) {
             GUI.log(i18n.getMessage('transpilerNotAvailable') || 'Transpiler not available');
             return;
         }
-        
+
         // First transpile
         GUI.log(i18n.getMessage('transpilingBeforeSave') || 'Transpiling before save...');
         const result = this.transpiler.transpile(code);
-        
+
         if (!result.success) {
             this.showError('Cannot save: Transpilation failed - ' + result.error);
             return;
         }
-        
+
         if (result.logicConditionCount > 64) {
             this.showError('Cannot save: Too many logic conditions (' + result.logicConditionCount + '/64)');
             return;
         }
-        
+
         // Confirm save
-        const confirmMsg = i18n.getMessage('confirmSaveLogicConditions') || 
+        const confirmMsg = i18n.getMessage('confirmSaveLogicConditions') ||
             `Save ${result.logicConditionCount} logic conditions to flight controller?`;
         if (!confirm(confirmMsg)) {
             return;
         }
-        
+
         GUI.log(i18n.getMessage('savingToFC') || 'Saving to flight controller...');
-        
+
         // Clear existing logic conditions
         FC.LOGIC_CONDITIONS.flush();
-        
+
         // Parse and load transpiled commands
         for (const cmd of result.commands) {
             if (cmd.startsWith('logic ')) {
@@ -948,68 +948,77 @@ if (flight.homeDistance > 100) {
                         operandAValue: parseInt(parts[6]),
                         operandBType: parseInt(parts[7]),
                         operandBValue: parseInt(parts[8]),
-                        flags: parts[9] ? parseInt(parts[9]) : 0
+                        flags: parts[9] ? parseInt(parts[9]) : 0,
+
+                        // Add getter methods that MSPHelper expects
+                        getEnabled: function() { return this.enabled; },
+                        getActivatorId: function() { return this.activatorId; },
+                        getOperation: function() { return this.operation; },
+                        getOperandAType: function() { return this.operandAType; },
+                        getOperandAValue: function() { return this.operandAValue; },
+                        getOperandBType: function() { return this.operandBType; },
+                        getOperandBValue: function() { return this.operandBValue; },
+                        getFlags: function() { return this.flags; }
                     };
-                    
+
                     FC.LOGIC_CONDITIONS.put(lc);
                 }
             }
         }
-        
-        // Create save chainer (same pattern as programming.js)
+
         const saveChainer = new MSPChainerClass();
-        
+
         saveChainer.setChain([
             mspHelper.sendLogicConditions,
             mspHelper.saveToEeprom
         ]);
-        
+
         saveChainer.setExitPoint(function() {
             GUI.log(i18n.getMessage('logicConditionsSaved') || 'Logic conditions saved successfully');
             self.isDirty = false;
-            
+
             // Optionally reboot (commented out for safety - user can reboot manually)
             // const shouldReboot = confirm('Reboot flight controller to apply changes?');
             // if (shouldReboot) {
             //     self.rebootFC();
             // }
         });
-        
+
         saveChainer.execute();
     },
-    
+
     /**
      * Reboot flight controller
      */
     rebootFC: function() {
         GUI.log(i18n.getMessage('rebooting') || 'Rebooting...');
-        
+
         GUI.tab_switch_cleanup(function() {
             MSP.send_message(MSPCodes.MSP_SET_REBOOT, false, false, function() {
                 GUI.log(i18n.getMessage('rebootComplete') || 'Reboot complete');
             });
         });
     },
-    
+
     cleanup: function (callback) {
         const self = this;
-        
+
         // Check for unsaved changes
         if (this.isDirty) {
-            const confirmMsg = i18n.getMessage('unsavedChanges') || 
+            const confirmMsg = i18n.getMessage('unsavedChanges') ||
                 'You have unsaved changes. Leave anyway?';
             if (!confirm(confirmMsg)) {
                 // Cancel navigation
                 return;
             }
         }
-        
+
         // Dispose Monaco editor
         if (this.editor && this.editor.dispose) {
             this.editor.dispose();
             this.editor = null;
         }
-        
+
         if (callback) callback();
     }
 };
