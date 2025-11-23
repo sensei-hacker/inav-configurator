@@ -13,7 +13,7 @@ const examples = {
     description: 'Increase VTX power automatically when far from home',
     category: 'VTX',
     code: `// Auto VTX power based on distance
-const { flight, override } = inav;
+const { flight, override, rc, gvar, waypoint, pid, helpers, events } = inav;
 
 if (flight.homeDistance > 100) {
   override.vtx.power = 3; // High power
@@ -29,7 +29,7 @@ if (flight.homeDistance > 500) {
     description: 'Reduce throttle when battery voltage is low',
     category: 'Safety',
     code: `// Battery protection - reduce throttle on low voltage
-const { flight, override } = inav;
+const { flight, override, rc, gvar, waypoint, pid, helpers, events } = inav;
 
 if (flight.cellVoltage < 350) {
   override.throttleScale = 50; // 50% throttle limit
@@ -45,7 +45,7 @@ if (flight.cellVoltage < 330) {
     description: 'Boost VTX power when RSSI drops',
     category: 'VTX',
     code: `// Boost VTX power when signal weakens
-const { flight, override } = inav;
+const { flight, override, rc, gvar, waypoint, pid, helpers, events } = inav;
 
 if (flight.rssi < 50) {
   override.vtx.power = 3;
@@ -207,6 +207,22 @@ if (rc[5].low) {
   override.vtx.power = 1; // Switch low = min power
 }`
   },
+
+
+  'override-rc': {
+    name: 'Override RC channel from speed',
+    description: 'Override RC channel based on ground speed',
+    category: 'RC Control',
+    code: `// 
+const { flight, override, rc } = inav;
+
+if (flight.groundSpeed > 1000) {  // >10 m/s
+  rc[9] = 1700;
+} else {
+  rc[9] = 1500;   // Center
+}`
+  },
+
 
   'debounce-edge': {
     name: 'Debounced Edge Detection',

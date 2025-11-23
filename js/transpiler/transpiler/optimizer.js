@@ -52,11 +52,9 @@ class Optimizer {
       ast = this.simplifyBooleans(ast);
       ast = this.eliminateDeadCode(ast);
       
-      // Phase 2: CSE (most impactful)
-      ast = this.eliminateCommonSubexpressions(ast);
       
-      // Phase 3: Inlining
-      // Requires a "local" decorator
+      // Phase 2: Inlining
+      // Needs a local decorator or something
       // ast = this.inlineSimpleGVARs(ast);
       
       const after = JSON.stringify(ast);
@@ -64,30 +62,62 @@ class Optimizer {
       passes++;
     }
     
+    // Phase 3: CSE (MUST run last to avoid broken references)
+    // CSE adds metadata that points to statement objects,
+    // so it must run after all optimizations that create new statement objects
+    ast = this.eliminateCommonSubexpressions(ast);
+    
     return ast;
   }
   
   /**
    * Common Subexpression Elimination
    * Find duplicate conditions and reuse them
+   * Also detects inverted conditions (condition vs !condition)
    */
   eliminateCommonSubexpressions(ast) {
     const conditionMap = new Map(); // condition string -> first LC index
+    const invertedMap = new Map(); // base condition string -> inverted LC index
     const statements = [];
     
     for (const statement of ast.statements) {
       if (statement.type === 'EventHandler' && statement.condition) {
-        const conditionKey = this.getConditionKey(statement.condition);
+        const condition = statement.condition;
         
-        // Check if we've seen this condition before
-        if (conditionMap.has(conditionKey)) {
-          // Reuse the existing condition
-          const existingStatement = conditionMap.get(conditionKey);
+        // Check if this is an inverted condition
+        const isInverted = condition.type === 'UnaryExpression' && condition.operator === '!';
+        const baseCondition = isInverted ? condition.argument : condition;
+        const baseKey = this.getConditionKey(baseCondition);
+        const fullKey = this.getConditionKey(condition);
+        
+        // Check if we've seen the exact same condition before
+        if (conditionMap.has(fullKey)) {
+          const existingStatement = conditionMap.get(fullKey);
           statement.reuseCondition = existingStatement;
           this.stats.cseEliminated++;
-        } else {
+        }
+        // Check if we've seen the base condition (for inverted conditions)
+        else if (isInverted && conditionMap.has(baseKey)) {
+          const existingStatement = conditionMap.get(baseKey);
+          statement.reuseCondition = existingStatement;
+          statement.invertReuse = true; // Mark that we're inverting the reused condition
+          this.stats.cseEliminated++;
+        }
+        // Check if we've seen the inverted version (for non-inverted conditions)
+        else if (!isInverted && invertedMap.has(baseKey)) {
+          const existingStatement = invertedMap.get(baseKey);
+          statement.reuseCondition = existingStatement;
+          statement.invertReuse = true; // Mark that we need to invert the reused condition
+          this.stats.cseEliminated++;
+        }
+        else {
           // First time seeing this condition
-          conditionMap.set(conditionKey, statement);
+          conditionMap.set(fullKey, statement);
+          
+          // Also track base condition for inverted matching
+          if (isInverted) {
+            invertedMap.set(baseKey, statement);
+          }
         }
       }
       
@@ -109,6 +139,11 @@ class Optimizer {
       const left = this.getConditionKey(condition.left);
       const right = this.getConditionKey(condition.right);
       return `${left}${condition.operator}${right}`;
+    }
+    
+    if (condition.type === 'UnaryExpression') {
+      const arg = this.getConditionKey(condition.argument);
+      return `${condition.operator}${arg}`;
     }
     
     if (condition.type === 'MemberExpression') {
@@ -342,7 +377,18 @@ class Optimizer {
         const simplified = this.simplifyCondition(statement.condition);
         if (simplified !== statement.condition) {
           this.stats.booleansSimplified++;
-          return { ...statement, condition: simplified };
+          // Preserve CSE metadata when creating new statement object
+          const newStmt = { ...statement, condition: simplified };
+          if (statement.reuseCondition) {
+            newStmt.reuseCondition = statement.reuseCondition;
+          }
+          if (statement.invertReuse) {
+            newStmt.invertReuse = statement.invertReuse;
+          }
+          if (statement.conditionLcIndex !== undefined) {
+            newStmt.conditionLcIndex = statement.conditionLcIndex;
+          }
+          return newStmt;
         }
       }
       return statement;

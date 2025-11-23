@@ -407,9 +407,10 @@ class SemanticAnalyzer {
    * Check if property can be written to
    */
   isValidWritableProperty(target) {
-    // Only gvar and specific override properties can be assigned
+    // Only gvar, rc, and specific override properties can be assigned
     if (target.startsWith('gvar[')) return true;
-    
+    if (target.startsWith('rc[')) return true;
+
     if (target.startsWith('override.')) {
       const parts = target.split('.');
       if (parts.length >= 2) {

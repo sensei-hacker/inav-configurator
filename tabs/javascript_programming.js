@@ -456,7 +456,7 @@ TABS.javascript_programming = {
     return `// INAV JavaScript Programming
 // Write JavaScript, get INAV logic conditions!
 
-const { flight, override } = inav;
+const { flight, override, rc, gvar, waypoint, pid, helpers, events } = inav;
 
 // Example: Increase VTX power when far from home
 if (flight.homeDistance > 100) {
