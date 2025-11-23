@@ -2,9 +2,9 @@
 
 ## Overview
 
-Based on the INAV source code and Programming Framework documentation, here are all the API definition files that need to be created in `js/transpiler/api/definitions/`.
+The INAV JavaScript API definitions are implemented in `js/transpiler/api/definitions/`. These files define the complete JavaScript API surface that maps to INAV firmware logic conditions.
 
-## Files to Create
+## API Definition Files
 
 ### 1. ✅ **flight.js** - Flight Telemetry (READ-ONLY)
 **Source**: `src/main/programming/logic_condition.c` (OPERAND_FLIGHT)
@@ -265,17 +265,6 @@ After creating these files:
 - **Documentation**: Programming Framework.md
 - **Configurator**: programming.js, programming.html
 
-## Migration Path
-
-1. ✅ Create all 9 definition files
-2. ✅ Update `analyzer.js` to use definitions
-3. ✅ Update `decompiler.js` to use definitions
-4. ✅ Update `types.js` generation
-5. ✅ Verify `codegen.js` compatibility
-6. ✅ Test full transpile/decompile cycle
-7. ✅ Update documentation
-8. ✅ Remove old hardcoded definitions
-
 ## Benefits
 
 ✅ **Single Source of Truth**: One place to edit  
@@ -283,13 +272,8 @@ After creating these files:
 ✅ **Type Safety**: Proper TypeScript generation  
 ✅ **Maintainability**: Easy to keep in sync with INAV  
 ✅ **Documentation**: Self-documenting API  
-✅ **Validation**: Comprehensive range/type checking  
+✅ **Validation**: Comprehensive range/type checking
 
-## Next Steps
+## Maintenance
 
-1. Create all 9 files in repository
-2. Test with existing transpiler code
-3. Verify all operand mappings match INAV firmware
-4. Add unit tests for each definition file
-5. Update main documentation
-6. Create migration guide for future INAV updates
+When adding new properties or updating existing ones, see `api_maintenance_guide.md` for the complete workflow and best practices.

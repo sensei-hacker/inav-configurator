@@ -14,12 +14,14 @@ js/transpiler/api/definitions/
 ```
 js/transpiler/api/definitions/
 ├── index.js           # Exports all definitions
+├── events.js          # Event handlers (timer, whenChanged, etc.)
 ├── flight.js          # Flight parameters (read-only)
+├── gvar.js            # Global variables (read/write)
+├── helpers.js         # Math & utility functions
 ├── override.js        # Override settings (writable)
+├── pid.js             # Programming PID controllers
 ├── rc.js              # RC channels (read-only)
-├── time.js            # Time utilities
-├── waypoint.js        # Waypoint navigation
-└── [future additions]
+└── waypoint.js        # Waypoint navigation
 ```
 
 ## Definition Format
@@ -228,8 +230,11 @@ module.exports = {
   flight: require('./flight.js'),
   override: require('./override.js'),
   rc: require('./rc.js'),
-  time: require('./time.js'),
+  gvar: require('./gvar.js'),
   waypoint: require('./waypoint.js'),
+  pid: require('./pid.js'),
+  helpers: require('./helpers.js'),
+  events: require('./events.js'),
   sensors: require('./sensors.js')  // ADD THIS
 };
 ```
@@ -334,9 +339,14 @@ const flightDef = apiDefinitions.flight;
 ```
 js/transpiler/api/definitions/
   ├── index.js
+  ├── events.js
   ├── flight.js
+  ├── gvar.js
+  ├── helpers.js
   ├── override.js
-  └── ...
+  ├── pid.js
+  ├── rc.js
+  └── waypoint.js
        ↓
        Used by:
        ├── analyzer.js (validation)
