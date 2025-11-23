@@ -138,23 +138,31 @@ class INAVCodeGenerator {
 
   /**
    * Generate on.arm handler
+   * Uses EDGE to trigger once when armed
    */
   generateOnArm(stmt) {
     const delay = stmt.config.delay || 0;
-    const delayMs = delay * 1000; // Convert to milliseconds
 
-    // Create activator: armTimer > delayMs
-    const activatorId = this.lcIndex;
+    // Create condition: armTimer > 0 (or flight.isArmed if available)
+    const conditionId = this.lcIndex;
     this.commands.push(
-      `logic ${this.lcIndex} 1 -1 ${OPERATION.GREATER_THAN} ${OPERAND_TYPE.FLIGHT} 0 ${OPERAND_TYPE.VALUE} ${delayMs} 0`
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.GREATER_THAN} ${OPERAND_TYPE.FLIGHT} 0 ${OPERAND_TYPE.VALUE} 0 0`
     );
     this.lcIndex++;
 
-    // Generate body actions
+    // Create EDGE operation (triggers once)
+    const edgeId = this.lcIndex;
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.EDGE} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} ${delay} 0`
+    );
+    this.lcIndex++;
+
+    // Generate body actions with EDGE as activator
     for (const action of stmt.body) {
-      this.generateAction(action, activatorId);
+      this.generateAction(action, edgeId);
     }
   }
+
 
   /**
    * Generate on.always handler
