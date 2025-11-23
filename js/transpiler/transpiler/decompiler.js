@@ -199,7 +199,7 @@ class Decompiler {
       if (conditionLC) {
         return {
           type: 'edge',
-          condition: this.decompileCondition(conditionLC),
+          condition: this.decompileCondition(conditionLC, allConditions),
           duration: duration
         };
       }
@@ -218,8 +218,8 @@ class Decompiler {
       if (onLC && offLC) {
         return {
           type: 'sticky',
-          onCondition: this.decompileCondition(onLC),
-          offCondition: this.decompileCondition(offLC)
+          onCondition: this.decompileCondition(onLC, allConditions),
+          offCondition: this.decompileCondition(offLC, allConditions)
         };
       }
     }
@@ -235,7 +235,7 @@ class Decompiler {
       if (conditionLC) {
         return {
           type: 'delay',
-          condition: this.decompileCondition(conditionLC),
+          condition: this.decompileCondition(conditionLC, allConditions),
           duration: duration
         };
       }
@@ -260,7 +260,7 @@ class Decompiler {
     if (activator.operation === OPERATION.DELTA) {
       // operandA is the value to monitor
       // operandB is the threshold
-      const valueOperand = this.decompileOperand(activator.operandAType, activator.operandAValue);
+      const valueOperand = this.decompileOperand(activator.operandAType, activator.operandAValue, allConditions);
       const threshold = activator.operandBValue;
       
       return {
@@ -330,7 +330,7 @@ class Decompiler {
   decompileGroup(group, allConditions) {
     if (!group.activator) {
       // Orphaned actions - just decompile them
-      const actions = group.actions.map(a => this.decompileAction(a)).filter(Boolean);
+      const actions = group.actions.map(a => this.decompileAction(a, allConditions)).filter(Boolean);
       return actions.join('\n');
     }
     
@@ -339,7 +339,7 @@ class Decompiler {
     
     if (pattern) {
       // Decompile actions
-      const actions = group.actions.map(a => this.decompileAction(a)).filter(Boolean);
+      const actions = group.actions.map(a => this.decompileAction(a, allConditions)).filter(Boolean);
       
       if (actions.length === 0) {
         this.warnings.push(`${pattern.type}() at index ${group.activator.index} has no actions`);
@@ -364,10 +364,10 @@ class Decompiler {
     }
     
     // Normal if statement
-    const condition = this.decompileCondition(group.activator);
+    const condition = this.decompileCondition(group.activator, allConditions);
     
     // Decompile actions
-    const actions = group.actions.map(a => this.decompileAction(a)).filter(Boolean);
+    const actions = group.actions.map(a => this.decompileAction(a, allConditions)).filter(Boolean);
     
     if (actions.length === 0) {
       this.warnings.push(`Condition at index ${group.activator.index} has no actions`);
@@ -384,11 +384,12 @@ class Decompiler {
   /**
    * Decompile a condition to JavaScript expression
    * @param {Object} lc - Logic condition
+   * @param {Array} allConditions - All conditions for recursive resolution
    * @returns {string} JavaScript expression
    */
-  decompileCondition(lc) {
-    const left = this.decompileOperand(lc.operandAType, lc.operandAValue);
-    const right = this.decompileOperand(lc.operandBType, lc.operandBValue);
+  decompileCondition(lc, allConditions = null) {
+    const left = this.decompileOperand(lc.operandAType, lc.operandAValue, allConditions);
+    const right = this.decompileOperand(lc.operandBType, lc.operandBValue, allConditions);
     
     switch (lc.operation) {
       case OPERATION.TRUE:
@@ -414,13 +415,13 @@ class Decompiler {
         
       case OPERATION.AND:
         // Try to resolve nested conditions
-        return `(${left}) && (${right})`;
+        return `${left} && ${right}`;
         
       case OPERATION.OR:
-        return `(${left}) || (${right})`;
+        return `${left} || ${right}`;
         
       case OPERATION.NOT:
-        return `!(${left})`;
+        return `!${left}`;
         
       case OPERATION.XOR:
         // XOR: true if exactly one operand is true
@@ -428,11 +429,11 @@ class Decompiler {
         
       case OPERATION.NAND:
         // NAND: NOT AND
-        return `!((${left}) && (${right}))`;
+        return `!(${left} && ${right})`;
         
       case OPERATION.NOR:
         // NOR: NOT OR
-        return `!((${left}) || (${right}))`;
+        return `!(${left} || ${right})`;
         
       case OPERATION.APPROX_EQUAL:
         // APPROX_EQUAL: B is within 1% of A
@@ -526,10 +527,11 @@ class Decompiler {
   /**
    * Decompile an action to JavaScript statement
    * @param {Object} lc - Logic condition
+   * @param {Array} allConditions - All conditions for recursive resolution
    * @returns {string} JavaScript statement
    */
-  decompileAction(lc) {
-    const value = this.decompileOperand(lc.operandBType, lc.operandBValue);
+  decompileAction(lc, allConditions = null) {
+    const value = this.decompileOperand(lc.operandBType, lc.operandBValue, allConditions);
     
     switch (lc.operation) {
       case OPERATION.GVAR_SET:
@@ -634,7 +636,7 @@ class Decompiler {
       case OPERATION.SUB:
       case OPERATION.MUL:
       case OPERATION.DIV: {
-        const target = this.decompileOperand(lc.operandAType, lc.operandAValue);
+        const target = this.decompileOperand(lc.operandAType, lc.operandAValue, allConditions);
         const ops = { [OPERATION.ADD]: '+', [OPERATION.SUB]: '-', [OPERATION.MUL]: '*', [OPERATION.DIV]: '/' };
         const op = ops[lc.operation];
         return `${target} = ${target} ${op} ${value};`;
@@ -651,9 +653,10 @@ class Decompiler {
    * Uses centralized API definitions for property names
    * @param {number} type - Operand type
    * @param {number} value - Operand value
+   * @param {Array} allConditions - All conditions for recursive resolution
    * @returns {string} JavaScript expression
    */
-  decompileOperand(type, value) {
+  decompileOperand(type, value, allConditions = null) {
     switch (type) {
       case OPERAND_TYPE.VALUE:
         return value.toString();
@@ -691,6 +694,15 @@ class Decompiler {
         
       case OPERAND_TYPE.GET_LC_VALUE:
         // Reference to another logic condition result
+        // If we have access to all conditions, recursively resolve
+        if (allConditions) {
+          const referencedLC = allConditions.find(lc => lc.index === value);
+          if (referencedLC) {
+            // Recursively decompile the referenced condition
+            return this.decompileCondition(referencedLC, allConditions);
+          }
+        }
+        // Fallback to reference notation if we can't resolve
         return `logicCondition[${value}]`;
         
       case OPERAND_TYPE.PID:
