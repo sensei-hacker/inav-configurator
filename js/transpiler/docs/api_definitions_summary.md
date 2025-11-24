@@ -111,15 +111,16 @@ Combines all definitions into single object.
 From INAV firmware (`logic_condition.h`):
 
 ```c
-typedef enum {
-    OPERAND_TYPE_VALUE = 0,           // Literal number
-    OPERAND_TYPE_GET_LC_VALUE = 1,    // Logic condition result
-    OPERAND_TYPE_FLIGHT = 2,          // Flight parameter (flight.js)
-    OPERAND_TYPE_GVAR = 3,            // Global variable (gvar.js)
-    OPERAND_TYPE_PID = 4,             // PID value
-    OPERAND_TYPE_WAYPOINT = 5,        // Waypoint (waypoint.js)
-    OPERAND_TYPE_PROGRAMMING_PID = 6  // Programming PID (pid.js)
-} operandType_e;
+typedef enum logicOperandType_s {
+    LOGIC_CONDITION_OPERAND_TYPE_VALUE = 0,       // Literal number
+    LOGIC_CONDITION_OPERAND_TYPE_RC_CHANNEL = 1,  // RC channel value
+    LOGIC_CONDITION_OPERAND_TYPE_FLIGHT = 2,      // Flight parameter (flight.js)
+    LOGIC_CONDITION_OPERAND_TYPE_FLIGHT_MODE = 3, // Flight mode
+    LOGIC_CONDITION_OPERAND_TYPE_LC = 4,          // Logic condition result
+    LOGIC_CONDITION_OPERAND_TYPE_GVAR = 5,        // Global variable (gvar.js)
+    LOGIC_CONDITION_OPERAND_TYPE_PID = 6,         // Programming PID (pid.js)
+    LOGIC_CONDITION_OPERAND_TYPE_WAYPOINTS = 7    // Waypoint (waypoint.js)
+} logicOperandType_e;
 ```
 
 ## Operation Mapping

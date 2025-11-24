@@ -587,7 +587,7 @@ if (flight.homeDistance > 100) {
             }
 
             // Add examples grouped by category
-            for (const [category, exampleList] of Object.entries(categories).sort()) {
+            for (const [category, exampleList] of Object.entries(categories)) {
                 const $optgroup = $('<optgroup>').attr('label', category);
 
                 for (const example of exampleList) {

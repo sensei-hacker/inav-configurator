@@ -404,8 +404,8 @@ class JavaScriptParser {
       return {
         type: 'BinaryExpression',
         operator: expr.operator,
-        left: this.extractIdentifier(expr.left),
-        right: this.extractValue(expr.right)
+        left: this.transformExpression(expr.left),
+        right: this.transformExpression(expr.right)
       };
     }
 
@@ -430,6 +430,58 @@ class JavaScriptParser {
         type: 'Literal',
         value: expr.value
       };
+    }
+
+    return null;
+  }
+
+  /**
+   * Transform expression (for use in conditions and assignments)
+   * Handles CallExpression (Math.abs), BinaryExpression (arithmetic), etc.
+   */
+  transformExpression(expr) {
+    if (!expr) return null;
+
+    // Handle literals
+    if (expr.type === 'Literal') {
+      return expr.value;
+    }
+
+    // Handle identifiers
+    if (expr.type === 'Identifier') {
+      return expr.name;
+    }
+
+    // Handle member expressions: flight.yaw, gvar[0]
+    if (expr.type === 'MemberExpression') {
+      return this.extractIdentifier(expr);
+    }
+
+    // Handle call expressions: Math.abs(x)
+    if (expr.type === 'CallExpression') {
+      return {
+        type: 'CallExpression',
+        callee: expr.callee,
+        arguments: expr.arguments
+      };
+    }
+
+    // Handle binary expressions: a + b, a - b
+    if (expr.type === 'BinaryExpression') {
+      return {
+        type: 'BinaryExpression',
+        operator: expr.operator,
+        left: expr.left,
+        right: expr.right
+      };
+    }
+
+    // Handle unary expressions: -x
+    if (expr.type === 'UnaryExpression') {
+      if (expr.operator === '-') {
+        const val = this.transformExpression(expr.argument);
+        return typeof val === 'number' ? -val : { type: 'UnaryExpression', operator: '-', argument: expr.argument };
+      }
     }
 
     return null;

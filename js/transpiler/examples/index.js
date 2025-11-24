@@ -8,6 +8,20 @@
 'use strict';
 
 const examples = {
+
+  'arm-init': {
+    name: 'Arm Initialization',
+    description: 'Initialize variables once when arming (executes once)',
+    category: 'Basic',
+    code: `// Initialize variables on arm (executes only once)
+const { flight, gvar, edge } = inav;
+
+edge(() => flight.armTimer > 1000, { duration: 0 }, () => {
+  gvar[0] = flight.yaw;    // Save initial heading
+  gvar[1] = 0;             // Reset counter
+});`
+  },
+  
   'vtx-distance': {
     name: 'VTX Power by Distance',
     description: 'Increase VTX power automatically when far from home',
@@ -56,18 +70,7 @@ if (flight.rssi < 30) {
 }`
   },
 
-  'arm-init': {
-    name: 'Arm Initialization',
-    description: 'Initialize variables once when arming (executes once)',
-    category: 'Basic',
-    code: `// Initialize variables on arm (executes only once)
-const { flight, gvar, edge } = inav;
 
-edge(() => flight.armTimer > 1000, { duration: 0 }, () => {
-  gvar[0] = flight.yaw;    // Save initial heading
-  gvar[1] = 0;             // Reset counter
-});`
-  },
 
   'altitude-stages': {
     name: 'Altitude-based Stages',

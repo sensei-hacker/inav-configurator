@@ -153,7 +153,7 @@ class INAVCodeGenerator {
     // Create EDGE operation (triggers once)
     const edgeId = this.lcIndex;
     this.commands.push(
-      `logic ${this.lcIndex} 1 -1 ${OPERATION.EDGE} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} ${delay} 0`
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.EDGE} ${OPERAND_TYPE.LC} ${conditionId} ${OPERAND_TYPE.VALUE} ${delay} 0`
     );
     this.lcIndex++;
 
@@ -203,7 +203,7 @@ class INAVCodeGenerator {
         if (stmt.invertReuse) {
           const notId = this.lcIndex;
           this.commands.push(
-            `logic ${this.lcIndex} 1 -1 ${OPERATION.NOT} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} 0 0`
+            `logic ${this.lcIndex} 1 -1 ${OPERATION.NOT} ${OPERAND_TYPE.LC} ${conditionId} ${OPERAND_TYPE.VALUE} 0 0`
           );
           this.lcIndex++;
           conditionId = notId;
@@ -252,7 +252,7 @@ class INAVCodeGenerator {
     // Generate EDGE operation (47)
     const edgeId = this.lcIndex;
     this.commands.push(
-      `logic ${this.lcIndex} 1 -1 ${OPERATION.EDGE} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} ${duration} 0`
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.EDGE} ${OPERAND_TYPE.LC} ${conditionId} ${OPERAND_TYPE.VALUE} ${duration} 0`
     );
     this.lcIndex++;
 
@@ -291,7 +291,7 @@ class INAVCodeGenerator {
     // Generate STICKY operation (13)
     const stickyId = this.lcIndex;
     this.commands.push(
-      `logic ${this.lcIndex} 1 -1 ${OPERATION.STICKY} ${OPERAND_TYPE.GET_LC_VALUE} ${onConditionId} ${OPERAND_TYPE.GET_LC_VALUE} ${offConditionId} 0`
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.STICKY} ${OPERAND_TYPE.LC} ${onConditionId} ${OPERAND_TYPE.LC} ${offConditionId} 0`
     );
     this.lcIndex++;
 
@@ -327,7 +327,7 @@ class INAVCodeGenerator {
     // Generate DELAY operation (48)
     const delayId = this.lcIndex;
     this.commands.push(
-      `logic ${this.lcIndex} 1 -1 ${OPERATION.DELAY} ${OPERAND_TYPE.GET_LC_VALUE} ${conditionId} ${OPERAND_TYPE.VALUE} ${duration} 0`
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.DELAY} ${OPERAND_TYPE.LC} ${conditionId} ${OPERAND_TYPE.VALUE} ${duration} 0`
     );
     this.lcIndex++;
 
@@ -463,7 +463,7 @@ class INAVCodeGenerator {
         const op = condition.operator === '&&' ? OPERATION.AND : OPERATION.OR;
         const resultIndex = this.lcIndex;
         this.commands.push(
-          `logic ${this.lcIndex} 1 ${activatorId} ${op} ${OPERAND_TYPE.GET_LC_VALUE} ${leftId} ${OPERAND_TYPE.GET_LC_VALUE} ${rightId} 0`
+          `logic ${this.lcIndex} 1 ${activatorId} ${op} ${OPERAND_TYPE.LC} ${leftId} ${OPERAND_TYPE.LC} ${rightId} 0`
         );
         this.lcIndex++;
         return resultIndex;
@@ -476,7 +476,7 @@ class INAVCodeGenerator {
         // Apply NOT
         const resultIndex = this.lcIndex;
         this.commands.push(
-          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.NOT} ${OPERAND_TYPE.GET_LC_VALUE} ${argId} ${OPERAND_TYPE.VALUE} 0 0`
+          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.NOT} ${OPERAND_TYPE.LC} ${argId} ${OPERAND_TYPE.VALUE} 0 0`
         );
         this.lcIndex++;
         return resultIndex;
@@ -578,7 +578,7 @@ class INAVCodeGenerator {
 
         // Then assign to gvar
         this.commands.push(
-          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${index} ${OPERAND_TYPE.GET_LC_VALUE} ${resultId} 0`
+          `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${index} ${OPERAND_TYPE.LC} ${resultId} 0`
         );
         this.lcIndex++;
       } else {
@@ -636,7 +636,7 @@ class INAVCodeGenerator {
   /**
    * Get operand from value
    */
-  getOperand(value) {
+  getOperand(value, activatorId = -1) {
     if (typeof value === 'number') {
       return { type: OPERAND_TYPE.VALUE, value };
     }
@@ -667,7 +667,79 @@ class INAVCodeGenerator {
       return { type: OPERAND_TYPE.VALUE, value: 0 };
     }
 
+    // Handle expression objects (CallExpression, BinaryExpression, etc.)
+    if (typeof value === 'object' && value !== null && value.type) {
+      return this.generateExpression(value, activatorId);
+    }
+
     return { type: OPERAND_TYPE.VALUE, value: 0 };
+  }
+
+  /**
+   * Generate an expression and return operand reference to result
+   * Handles Math.abs(), arithmetic operations, etc.
+   */
+  generateExpression(expr, activatorId) {
+    if (!expr || !expr.type) {
+      return { type: OPERAND_TYPE.VALUE, value: 0 };
+    }
+
+    switch (expr.type) {
+      case 'CallExpression': {
+        // Handle Math.abs(x)
+        if (expr.callee && expr.callee.type === 'MemberExpression' &&
+            expr.callee.object && expr.callee.object.name === 'Math' &&
+            expr.callee.property && expr.callee.property.name === 'abs') {
+
+          if (!expr.arguments || expr.arguments.length !== 1) {
+            console.warn('Math.abs() requires exactly 1 argument');
+            return { type: OPERAND_TYPE.VALUE, value: 0 };
+          }
+
+          // Get the argument operand (recursively handle nested expressions)
+          const arg = this.getOperand(this.arrowHelper.extractIdentifier(expr.arguments[0]) || expr.arguments[0], activatorId);
+
+          // Compute abs using: abs(x) = max(x, 0 - x)
+          // First: compute 0 - x
+          const negId = this.lcIndex;
+          this.commands.push(
+            `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.SUB} ${OPERAND_TYPE.VALUE} 0 ${arg.type} ${arg.value} 0`
+          );
+          this.lcIndex++;
+
+          // Then: compute max(x, -x)
+          const absId = this.lcIndex;
+          this.commands.push(
+            `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.MAX} ${arg.type} ${arg.value} ${OPERAND_TYPE.LC} ${negId} 0`
+          );
+          this.lcIndex++;
+
+          return { type: OPERAND_TYPE.LC, value: absId };
+        }
+
+        console.warn(`Unsupported function call: ${expr.callee?.property?.name || 'unknown'}`);
+        return { type: OPERAND_TYPE.VALUE, value: 0 };
+      }
+
+      case 'BinaryExpression': {
+        // Handle arithmetic: a + b, a - b, etc.
+        const left = this.getOperand(this.arrowHelper.extractIdentifier(expr.left) || expr.left, activatorId);
+        const right = this.getOperand(this.arrowHelper.extractIdentifier(expr.right) || expr.right, activatorId);
+        const op = this.getArithmeticOperation(expr.operator);
+
+        const resultId = this.lcIndex;
+        this.commands.push(
+          `logic ${this.lcIndex} 1 ${activatorId} ${op} ${left.type} ${left.value} ${right.type} ${right.value} 0`
+        );
+        this.lcIndex++;
+
+        return { type: OPERAND_TYPE.LC, value: resultId };
+      }
+
+      default:
+        console.warn(`Unsupported expression type: ${expr.type}`);
+        return { type: OPERAND_TYPE.VALUE, value: 0 };
+    }
   }
 
   /**

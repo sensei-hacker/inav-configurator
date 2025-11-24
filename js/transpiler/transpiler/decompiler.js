@@ -720,7 +720,7 @@ class Decompiler {
         return `flight.mode[${value}] /* unknown mode */`;
       }
 
-      case OPERAND_TYPE.GET_LC_VALUE:
+      case OPERAND_TYPE.LC:
         // Reference to another logic condition result
         // If we have access to all conditions, recursively resolve
         if (allConditions) {

@@ -1,32 +1,30 @@
 /**
  * INAV Flight Parameters API Definition
- * 
+ *
  * Location: js/transpiler/api/definitions/flight.js
- * 
+ *
  * Read-only flight controller telemetry and state information.
- * Source: src/main/programming/logic_condition.c (OPERAND_FLIGHT)
+ * Source: src/main/programming/logic_condition.h (logicFlightOperands_e)
+ *
+ * IMPORTANT: All operand values are imported from inav_constants.js which is
+ * auto-generated from INAV firmware. This ensures the transpiler stays in sync
+ * with firmware changes. DO NOT hardcode operand values here.
  */
 
 'use strict';
+
+const { OPERAND_TYPE, FLIGHT_PARAM } = require('../../transpiler/inav_constants.js');
 
 module.exports = {
   // Timing
   armTimer: {
     type: 'number',
-    unit: 'ms',
-    desc: 'Time since arming in milliseconds',
-    readonly: true,
-    inavOperand: { type: 2, value: 0 }
-  },
-  
-  flightTime: {
-    type: 'number',
     unit: 's',
-    desc: 'Total flight time in seconds',
+    desc: 'Time since arming in seconds',
     readonly: true,
-    inavOperand: { type: 2, value: 16 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.ARM_TIMER }
   },
-  
+
   // Distance & Position
   homeDistance: {
     type: 'number',
@@ -34,34 +32,33 @@ module.exports = {
     desc: 'Distance to home position in meters',
     readonly: true,
     range: [0, 65535],
-    inavOperand: { type: 2, value: 1 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.HOME_DISTANCE }
   },
-  
+
+  homeDistance3d: {
+    type: 'number',
+    unit: 'm',
+    desc: '3D distance to home position in meters',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.HOME_DISTANCE_3D }
+  },
+
   tripDistance: {
     type: 'number',
     unit: 'm',
     desc: 'Total distance traveled in current flight',
     readonly: true,
-    inavOperand: { type: 2, value: 2 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.TRIP_DISTANCE }
   },
-  
+
   distanceTraveled: {
     type: 'number',
     unit: 'm',
     desc: 'Alias for tripDistance',
     readonly: true,
-    inavOperand: { type: 2, value: 2 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.TRIP_DISTANCE }
   },
-  
-  homeDirection: {
-    type: 'number',
-    unit: '°',
-    desc: 'Direction to home in degrees (0-359)',
-    readonly: true,
-    range: [0, 359],
-    inavOperand: { type: 2, value: 17 }
-  },
-  
+
   // Communication
   rssi: {
     type: 'number',
@@ -69,107 +66,136 @@ module.exports = {
     desc: 'Radio signal strength (0-99)',
     readonly: true,
     range: [0, 99],
-    inavOperand: { type: 2, value: 3 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.RSSI }
   },
-  
+
   // Battery
   vbat: {
     type: 'number',
     unit: 'cV',
     desc: 'Battery voltage in centivolts (e.g., 1260 = 12.60V)',
     readonly: true,
-    inavOperand: { type: 2, value: 4 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.VBAT }
   },
-  
+
   cellVoltage: {
     type: 'number',
     unit: 'cV',
     desc: 'Average cell voltage in centivolts',
     readonly: true,
-    inavOperand: { type: 2, value: 5 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.CELL_VOLTAGE }
   },
-  
+
   current: {
     type: 'number',
     unit: 'cA',
     desc: 'Current draw in centi-amps',
     readonly: true,
-    inavOperand: { type: 2, value: 6 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.CURRENT }
   },
-  
+
   mahDrawn: {
     type: 'number',
     unit: 'mAh',
     desc: 'Battery capacity consumed in mAh',
     readonly: true,
-    inavOperand: { type: 2, value: 7 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.MAH_DRAWN }
   },
-  
-  mwhDrawn: {
+
+  batteryCells: {
     type: 'number',
-    unit: 'mWh',
-    desc: 'Energy consumed in mWh',
+    desc: 'Number of battery cells detected',
     readonly: true,
-    inavOperand: { type: 2, value: 8 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.BATT_CELLS }
   },
-  
-  batteryRemainingCapacity: {
+
+  batteryProfile: {
     type: 'number',
-    unit: 'mAh',
-    desc: 'Estimated remaining battery capacity',
+    desc: 'Active battery profile number',
     readonly: true,
-    inavOperand: { type: 2, value: 18 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.BATT_PROFILE }
   },
-  
-  batteryPercentage: {
-    type: 'number',
-    unit: '%',
-    desc: 'Battery percentage remaining',
-    readonly: true,
-    range: [0, 100],
-    inavOperand: { type: 2, value: 19 }
-  },
-  
+
   // GPS
   gpsSats: {
     type: 'number',
     desc: 'Number of GPS satellites',
     readonly: true,
-    inavOperand: { type: 2, value: 9 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.GPS_SATS }
   },
-  
+
   gpsValid: {
     type: 'boolean',
     desc: 'GPS fix is valid',
     readonly: true,
-    inavOperand: { type: 2, value: 10 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.GPS_VALID }
   },
-  
+
   // Speed & Altitude
   groundSpeed: {
     type: 'number',
     unit: 'cm/s',
     desc: 'Ground speed in cm/s',
     readonly: true,
-    inavOperand: { type: 2, value: 11 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.GROUND_SPEED }
   },
-  
+
+  speed3d: {
+    type: 'number',
+    unit: 'cm/s',
+    desc: '3D speed in cm/s',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.SPEED_3D }
+  },
+
+  airSpeed: {
+    type: 'number',
+    unit: 'cm/s',
+    desc: 'Air speed in cm/s',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.AIR_SPEED }
+  },
+
   altitude: {
     type: 'number',
     unit: 'cm',
     desc: 'Altitude above home in centimeters',
     readonly: true,
-    inavOperand: { type: 2, value: 12 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.ALTITUDE }
   },
-  
+
   verticalSpeed: {
     type: 'number',
     unit: 'cm/s',
     desc: 'Vertical speed (climb rate) in cm/s',
     readonly: true,
-    inavOperand: { type: 2, value: 13 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.VERTICAL_SPEED }
   },
-  
+
+  // Above Ground Level
+  agl: {
+    type: 'number',
+    unit: 'cm',
+    desc: 'Above ground level altitude in cm',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.AGL }
+  },
+
+  aglStatus: {
+    type: 'number',
+    desc: 'AGL sensor status (0=invalid, 1=valid, 2=trusted)',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.AGL_STATUS }
+  },
+
+  rangefinder: {
+    type: 'number',
+    unit: 'cm',
+    desc: 'Raw rangefinder reading in cm',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.RANGEFINDER_RAW }
+  },
+
   // Throttle & Attitude
   throttlePos: {
     type: 'number',
@@ -177,191 +203,203 @@ module.exports = {
     desc: 'Throttle position percentage (0-100)',
     readonly: true,
     range: [0, 100],
-    inavOperand: { type: 2, value: 14 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.THROTTLE_POS }
   },
-  
+
   roll: {
     type: 'number',
     unit: 'decideg',
     desc: 'Roll angle in decidegrees',
     readonly: true,
     range: [-1800, 1800],
-    inavOperand: { type: 2, value: 15 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.ROLL }
   },
-  
+
   pitch: {
     type: 'number',
     unit: 'decideg',
     desc: 'Pitch angle in decidegrees',
     readonly: true,
     range: [-1800, 1800],
-    inavOperand: { type: 2, value: 16 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.PITCH }
   },
-  
+
   yaw: {
     type: 'number',
     unit: 'decideg',
     desc: 'Yaw/heading in decidegrees (0-3599)',
     readonly: true,
     range: [0, 3599],
-    inavOperand: { type: 2, value: 17 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.YAW }
   },
-  
+
   heading: {
     type: 'number',
-    unit: '°',
-    desc: 'Heading in degrees (0-359)',
+    unit: 'decideg',
+    desc: 'Heading in decidegrees (alias for yaw)',
     readonly: true,
-    range: [0, 359],
-    inavOperand: { type: 2, value: 17 }
+    range: [0, 3599],
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.YAW }
   },
-  
+
+  // Stabilized values
+  stabilizedRoll: {
+    type: 'number',
+    unit: 'decideg',
+    desc: 'Stabilized roll setpoint in decidegrees',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.STABILIZED_ROLL }
+  },
+
+  stabilizedPitch: {
+    type: 'number',
+    unit: 'decideg',
+    desc: 'Stabilized pitch setpoint in decidegrees',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.STABILIZED_PITCH }
+  },
+
+  stabilizedYaw: {
+    type: 'number',
+    unit: 'decideg',
+    desc: 'Stabilized yaw setpoint in decidegrees',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.STABILIZED_YAW }
+  },
+
   // State
   isArmed: {
     type: 'boolean',
     desc: 'Aircraft is armed',
     readonly: true,
-    inavOperand: { type: 2, value: 18 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_ARMED }
   },
-  
+
   isAutoLaunch: {
     type: 'boolean',
     desc: 'Auto-launch is active',
     readonly: true,
-    inavOperand: { type: 2, value: 19 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_AUTOLAUNCH }
   },
-  
+
+  isAltitudeControl: {
+    type: 'boolean',
+    desc: 'Altitude control is active',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_ALTITUDE_CONTROL }
+  },
+
+  isPositionControl: {
+    type: 'boolean',
+    desc: 'Position control is active',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_POSITION_CONTROL }
+  },
+
+  isEmergencyLanding: {
+    type: 'boolean',
+    desc: 'Emergency landing is active',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_EMERGENCY_LANDING }
+  },
+
+  isRth: {
+    type: 'boolean',
+    desc: 'Return to home is active',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_RTH }
+  },
+
+  isLanding: {
+    type: 'boolean',
+    desc: 'Landing mode is active',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_LANDING }
+  },
+
   isFailsafe: {
     type: 'boolean',
     desc: 'Failsafe mode is active',
     readonly: true,
-    inavOperand: { type: 2, value: 20 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.IS_FAILSAFE }
   },
-  
+
   // Profile
-  mixerProfile: {
+  activeProfile: {
     type: 'number',
-    desc: 'Current mixer profile (0-2)',
+    desc: 'Active control profile number',
     readonly: true,
-    range: [0, 2],
-    inavOperand: { type: 2, value: 21 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.ACTIVE_PROFILE }
   },
-  
-  // Waypoint Navigation
-  activeWpNumber: {
+
+  activeMixerProfile: {
     type: 'number',
-    desc: 'Active waypoint number',
+    desc: 'Active mixer profile number',
     readonly: true,
-    inavOperand: { type: 2, value: 31 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.ACTIVE_MIXER_PROFILE }
   },
-  
-  activeWpAction: {
+
+  mixerTransitionActive: {
+    type: 'boolean',
+    desc: 'Mixer transition is active',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.MIXER_TRANSITION_ACTIVE }
+  },
+
+  // Navigation
+  loiterRadius: {
     type: 'number',
-    desc: 'Active waypoint action code',
+    unit: 'cm',
+    desc: 'Current loiter radius in cm',
     readonly: true,
-    inavOperand: { type: 2, value: 32 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.LOITER_RADIUS }
   },
-  
-  // Additional Navigation
-  courseToHome: {
+
+  flownLoiterRadius: {
     type: 'number',
-    unit: '°',
-    desc: 'Course to home position in degrees',
+    unit: 'm',
+    desc: 'Actual flown loiter radius in meters',
     readonly: true,
-    range: [0, 359],
-    inavOperand: { type: 2, value: 35 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.FLOWN_LOITER_RADIUS }
   },
-  
-  gpsCourseOverGround: {
+
+  fwLandState: {
     type: 'number',
-    unit: '°',
-    desc: 'GPS course over ground in degrees',
+    desc: 'Fixed-wing landing state',
     readonly: true,
-    range: [0, 359],
-    inavOperand: { type: 2, value: 36 }
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.FW_LAND_STATE }
   },
-  
-  // Flight Modes (nested object)
-  mode: {
-    type: 'object',
-    desc: 'Flight mode states',
-    properties: {
-      failsafe: {
-        type: 'boolean',
-        desc: 'Failsafe mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 20 }
-      },
-      
-      manual: {
-        type: 'boolean',
-        desc: 'Manual mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 21 }
-      },
-      
-      rth: {
-        type: 'boolean',
-        desc: 'Return to home mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 22 }
-      },
-      
-      poshold: {
-        type: 'boolean',
-        desc: 'Position hold mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 23 }
-      },
-      
-      althold: {
-        type: 'boolean',
-        desc: 'Altitude hold mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 24 }
-      },
-      
-      wp: {
-        type: 'boolean',
-        desc: 'Waypoint mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 25 }
-      },
-      
-      gcs_nav: {
-        type: 'boolean',
-        desc: 'GCS navigation mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 26 }
-      },
-      
-      airmode: {
-        type: 'boolean',
-        desc: 'Air mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 27 }
-      },
-      
-      angle: {
-        type: 'boolean',
-        desc: 'Angle mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 28 }
-      },
-      
-      horizon: {
-        type: 'boolean',
-        desc: 'Horizon mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 29 }
-      },
-      
-      cruise: {
-        type: 'boolean',
-        desc: 'Cruise mode active',
-        readonly: true,
-        inavOperand: { type: 2, value: 30 }
-      }
-    }
+
+  // CRSF Telemetry
+  crsfLqUplink: {
+    type: 'number',
+    unit: '%',
+    desc: 'CRSF uplink link quality percentage',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.CRSF_LQ_UPLINK }
+  },
+
+  crsfLqDownlink: {
+    type: 'number',
+    unit: '%',
+    desc: 'CRSF downlink link quality percentage',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.CRSF_LQ_DOWNLINK }
+  },
+
+  crsfSnr: {
+    type: 'number',
+    unit: 'dB',
+    desc: 'CRSF signal-to-noise ratio in dB',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.CRSF_SNR }
+  },
+
+  crsfRssiDbm: {
+    type: 'number',
+    unit: 'dBm',
+    desc: 'CRSF RSSI in dBm',
+    readonly: true,
+    inavOperand: { type: OPERAND_TYPE.FLIGHT, value: FLIGHT_PARAM.CRSF_RSSI_DBM }
   }
 };
