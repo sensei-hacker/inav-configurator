@@ -80,4 +80,4 @@ const INAV_CONSTANTS = {
   }
 };
 
-module.exports = { INAV_CONSTANTS };
+export { INAV_CONSTANTS };

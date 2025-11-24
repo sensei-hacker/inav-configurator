@@ -9,27 +9,28 @@
 
 'use strict';
 
-const { ArrowFunctionHelper } = require('./arrow_function_helper.js');
-const { ErrorHandler } = require('./error_handler.js');
+import { ArrowFunctionHelper } from './arrow_function_helper.js';
+import { ErrorHandler } from './error_handler.js';
 
-const {
+import {
   OPERAND_TYPE,
   OPERATION,
   getOperationName
-} = require('./inav_constants.js');
-const apiDefinitions = require('./../api/definitions/index.js');
+} from './inav_constants.js';
+import apiDefinitions from './../api/definitions/index.js';
 
 /**
  * INAV Code Generator
  * Converts AST to INAV logic condition commands
  */
 class INAVCodeGenerator {
-  constructor() {
+  constructor(variableHandler = null) {
     this.lcIndex = 0; // Current logic condition index
     this.commands = [];
     this.errorHandler = new ErrorHandler(); // Error and warning collection
     this.operandMapping = this.buildOperandMapping(apiDefinitions);
     this.arrowHelper = new ArrowFunctionHelper(this);
+    this.variableHandler = variableHandler;
   }
 
   /**
@@ -86,6 +87,14 @@ class INAVCodeGenerator {
       throw new Error('Invalid AST');
     }
 
+    // Generate var initializations at program start
+    if (this.variableHandler) {
+      const varInits = this.variableHandler.getVarInitializations();
+      for (const init of varInits) {
+        this.generateVarInitialization(init);
+      }
+    }
+
     for (const stmt of ast.statements) {
       this.generateStatement(stmt);
     }
@@ -106,7 +115,9 @@ class INAVCodeGenerator {
         this.generateEventHandler(stmt);
         break;
       case 'Destructuring':
-        // Ignore - just used for parser
+      case 'LetDeclaration':
+      case 'VarDeclaration':
+        // Skip - declarations handled separately
         break;
       default:
         this.errorHandler.addError(
@@ -115,6 +126,20 @@ class INAVCodeGenerator {
           'unsupported_statement'
         );
     }
+  }
+
+  /**
+   * Generate initialization for var variable
+   */
+  generateVarInitialization(init) {
+    // Generate gvar initialization at program start
+    const valueOperand = this.getOperand(init.initExpr, -1);
+
+    // Use GVAR_SET to initialize the variable
+    this.commands.push(
+      `logic ${this.lcIndex} 1 -1 ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${init.gvarIndex} ${valueOperand.type} ${valueOperand.value} 0`
+    );
+    this.lcIndex++;
   }
 
   /**
@@ -704,6 +729,53 @@ class INAVCodeGenerator {
       this.lcIndex++;
       return;
     }
+
+    // Handle variable assignment (var variables resolve to gvar[N])
+    if (this.variableHandler && this.variableHandler.isVariable(target)) {
+      const resolution = this.variableHandler.resolveVariable(target);
+
+      if (resolution && resolution.type === 'var_gvar') {
+        // Resolve to gvar[N] and generate gvar assignment
+        const gvarRef = resolution.gvarRef;
+        const index = parseInt(gvarRef.match(/\d+/)[0]);
+
+        if (action.operation) {
+          // Arithmetic operation
+          const left = this.getOperand(action.left);
+          const right = this.getOperand(action.right);
+
+          const op = action.operation === '+' ? OPERATION.ADD :
+                     action.operation === '-' ? OPERATION.SUB :
+                     action.operation === '*' ? OPERATION.MUL :
+                     action.operation === '/' ? OPERATION.DIV : null;
+
+          if (!op) {
+            this.errorHandler.addError(`Unsupported operation: ${action.operation}`, null, 'unsupported_operation');
+            return;
+          }
+
+          const resultId = this.lcIndex;
+          this.commands.push(
+            `logic ${this.lcIndex} 1 ${activatorId} ${op} ${left.type} ${left.value} ${right.type} ${right.value} 0`
+          );
+          this.lcIndex++;
+
+          this.commands.push(
+            `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${index} ${OPERAND_TYPE.LC} ${resultId} 0`
+          );
+          this.lcIndex++;
+        } else {
+          // Simple assignment
+          const valueOperand = this.getOperand(value);
+          this.commands.push(
+            `logic ${this.lcIndex} 1 ${activatorId} ${OPERATION.GVAR_SET} ${OPERAND_TYPE.VALUE} ${index} ${valueOperand.type} ${valueOperand.value} 0`
+          );
+          this.lcIndex++;
+        }
+        return;
+      }
+    }
+
     this.errorHandler.addError(
       `Cannot assign to '${target}'. Only gvar[0-7], rc[0-17], and override.* are writable`,
       null,
@@ -724,6 +796,19 @@ class INAVCodeGenerator {
     }
 
     if (typeof value === 'string') {
+      // Check if it's a variable reference
+      if (this.variableHandler && this.variableHandler.isVariable(value)) {
+        const resolution = this.variableHandler.resolveVariable(value);
+
+        if (resolution.type === 'let_expression') {
+          // Inline substitute the expression AST
+          return this.getOperand(resolution.ast, activatorId);
+        } else if (resolution.type === 'var_gvar') {
+          // Replace with gvar reference and continue
+          value = resolution.gvarRef;
+        }
+      }
+
       // Check for gvar
       if (value.startsWith('gvar[')) {
         const index = parseInt(value.match(/\d+/)[0]);
@@ -892,4 +977,4 @@ class INAVCodeGenerator {
     }
 }
 
-module.exports = { INAVCodeGenerator };
+export { INAVCodeGenerator };

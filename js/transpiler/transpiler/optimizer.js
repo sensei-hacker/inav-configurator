@@ -480,4 +480,4 @@ class Optimizer {
   }
 }
 
-module.exports = { Optimizer };
+export { Optimizer };

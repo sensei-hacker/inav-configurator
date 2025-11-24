@@ -9,28 +9,37 @@
 
 'use strict';
 
-module.exports = {
+import flight from './flight.js';
+import override from './override.js';
+import rc from './rc.js';
+import gvar from './gvar.js';
+import waypoint from './waypoint.js';
+import pid from './pid.js';
+import helpers from './helpers.js';
+import events from './events.js';
+
+export default {
   // Read-only telemetry and state
-  flight: require('./flight.js'),
-  
+  flight,
+
   // Writable overrides
-  override: require('./override.js'),
-  
+  override,
+
   // RC receiver channels
-  rc: require('./rc.js'),
-  
+  rc,
+
   // Global variables (read/write)
-  gvar: require('./gvar.js'),
-  
+  gvar,
+
   // Waypoint navigation
-  waypoint: require('./waypoint.js'),
-  
+  waypoint,
+
   // Programming PID controllers
-  pid: require('./pid.js'),
-  
+  pid,
+
   // Helper functions (min, max, abs, sin, cos, etc.)
-  helpers: require('./helpers.js'),
-  
+  helpers,
+
   // Event handlers (on, sticky, etc.)
-  events: require('./events.js')
+  events
 };

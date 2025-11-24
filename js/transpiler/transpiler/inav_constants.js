@@ -340,7 +340,7 @@ function isValidRCChannel(channel) {
   return channel >= RC_CHANNEL.MIN_CHANNEL && channel <= RC_CHANNEL.MAX_CHANNEL;
 }
 
-module.exports = {
+export {
   OPERAND_TYPE,
   OPERATION,
   FLIGHT_PARAM,
@@ -351,7 +351,7 @@ module.exports = {
   RC_CHANNEL,
   GVAR_CONFIG,
   VTX,
-  
+
   // Helper functions
   getFlightParamName,
   getOperationName,

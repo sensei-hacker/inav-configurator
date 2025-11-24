@@ -9,7 +9,7 @@
 
 'use strict';
 
-module.exports = {
+export default {
   // Throttle Control
   throttleScale: {
     type: 'number',

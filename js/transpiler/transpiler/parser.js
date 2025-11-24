@@ -9,7 +9,8 @@
 
 'use strict';
 
-const acorn = require('acorn');
+import * as acorn from 'acorn';
+import { VariableHandler } from './variable_handler.js';
 
 /**
  * Production JavaScript Parser for INAV subset
@@ -27,6 +28,7 @@ class JavaScriptParser {
    */
   parse(code) {
     this.warnings = [];
+    this.variableHandler = new VariableHandler();  // Fresh handler for each parse
 
     try {
       // Parse with Acorn
@@ -40,6 +42,7 @@ class JavaScriptParser {
       // Transform to our simplified format
       const result = this.transformAST(acornAST);
       result.warnings = this.warnings;
+      result.variableHandler = this.variableHandler;  // Pass handler to analyzer
       return result;
     } catch (error) {
       // Enhance error message with location info
@@ -186,7 +189,7 @@ class JavaScriptParser {
   }
 
   /**
-   * Transform variable declaration (const { flight } = inav)
+   * Transform variable declaration (const { flight } = inav, let x = ..., var y = ...)
    */
   transformVariableDeclaration(node) {
     // Look for: const { ... } = inav
@@ -202,6 +205,16 @@ class JavaScriptParser {
           range: node.range
         };
       }
+    }
+
+    // Handle let/var declarations via VariableHandler
+    const varDecl = this.variableHandler.extractVariableDeclaration(node);
+    if (varDecl) {
+      // Transform the initExpr from Acorn AST to our format
+      if (varDecl.initExpr) {
+        varDecl.initExpr = this.transformExpression(varDecl.initExpr);
+      }
+      return varDecl;
     }
 
     return null;
@@ -471,8 +484,8 @@ class JavaScriptParser {
       return {
         type: 'BinaryExpression',
         operator: expr.operator,
-        left: expr.left,
-        right: expr.right
+        left: this.transformExpression(expr.left),
+        right: this.transformExpression(expr.right)
       };
     }
 
@@ -608,4 +621,4 @@ class JavaScriptParser {
   }
 }
 
-module.exports = { JavaScriptParser };
+export { JavaScriptParser };

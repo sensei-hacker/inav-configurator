@@ -13,7 +13,7 @@
 
 'use strict';
 
-module.exports = {
+export default {
   // on namespace - time-based and state-based triggers
   on: {
     type: 'namespace',

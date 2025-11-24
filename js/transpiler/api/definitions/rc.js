@@ -55,4 +55,4 @@ for (let i = 0; i < 18; i++) {
   };
 }
 
-module.exports = rcChannels;
+export default rcChannels;
