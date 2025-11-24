@@ -16,6 +16,7 @@
 
 import { OPERAND_TYPE, OPERATION } from './inav_constants.js';
 import apiDefinitions from './../api/definitions/index.js';
+import { VariableHandler } from './variable_handler.js';
 
 /**
  * Semantic Analyzer for INAV JavaScript subset
@@ -24,13 +25,14 @@ class SemanticAnalyzer {
   constructor() {
     // Build API structure from centralized definitions
     this.inavAPI = this.buildAPIStructure(apiDefinitions);
-    
+
     this.gvarCount = 8;
     this.gvarRanges = { min: -1000000, max: 1000000 };
     this.headingRange = { min: 0, max: 359 };
-    
+
     this.errors = [];
     this.warnings = [];
+    this.variableHandler = new VariableHandler();
   }
   
   /**

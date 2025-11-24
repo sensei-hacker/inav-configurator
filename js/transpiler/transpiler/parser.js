@@ -10,6 +10,7 @@
 'use strict';
 
 import * as acorn from 'acorn';
+import { VariableHandler } from './variable_handler.js';
 
 /**
  * Production JavaScript Parser for INAV subset
@@ -18,6 +19,7 @@ import * as acorn from 'acorn';
 class JavaScriptParser {
   constructor() {
     this.warnings = [];
+    this.variableHandler = new VariableHandler();
   }
 
   /**

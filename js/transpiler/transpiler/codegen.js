@@ -24,12 +24,13 @@ import apiDefinitions from './../api/definitions/index.js';
  * Converts AST to INAV logic condition commands
  */
 class INAVCodeGenerator {
-  constructor() {
+  constructor(variableHandler = null) {
     this.lcIndex = 0; // Current logic condition index
     this.commands = [];
     this.errorHandler = new ErrorHandler(); // Error and warning collection
     this.operandMapping = this.buildOperandMapping(apiDefinitions);
     this.arrowHelper = new ArrowFunctionHelper(this);
+    this.variableHandler = variableHandler;
   }
 
   /**
