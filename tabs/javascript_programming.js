@@ -1020,5 +1020,3 @@ if (flight.homeDistance > 100) {
         if (callback) callback();
     }
 };
-
-module.exports = TABS.javascript_programming;
