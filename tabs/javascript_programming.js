@@ -6,15 +6,18 @@
 
 'use strict';
 
-const MSPChainerClass = require('./../js/msp/MSPchainer');
-const mspHelper = require('./../js/msp/MSPHelper');
-const { GUI, TABS } = require('./../js/gui');
-const FC = require('./../js/fc');
-const path = require('path');
-const i18n = require('./../js/localization');
-const { Transpiler } = require('./../js/transpiler/index.js');
-const { Decompiler } = require('./../js/transpiler/transpiler/decompiler.js');
-const MonacoLoader = require('./../js/transpiler/editor/monaco_loader.js');
+import MSPChainerClass from './../js/msp/MSPchainer.js';
+import mspHelper from './../js/msp/MSPHelper.js';
+import { GUI, TABS } from './../js/gui.js';
+import FC from './../js/fc.js';
+import path from 'node:path';
+import i18n from './../js/localization.js';
+import { Transpiler } from './../js/transpiler/index.js';
+import { Decompiler } from './../js/transpiler/transpiler/decompiler.js';
+import * as MonacoLoader from './../js/transpiler/editor/monaco_loader.js';
+import apiDefinitions from './transpiler/api/definitions/index.js';
+import { generateTypeDefinitions } from './transpiler/api/types.js';
+import examples from './../js/transpiler/examples/index.js';
 
 
 TABS.javascript_programming = {
@@ -100,9 +103,7 @@ TABS.javascript_programming = {
                     return;
                 }
 
-                const path = require('path');
-
-                // Find monaco-editor path
+                // Find monaco-editor path (path imported at top)
                 let monacoBasePath;
                 try {
                     monacoBasePath = path.dirname(require.resolve('monaco-editor/package.json'));
@@ -243,10 +244,8 @@ TABS.javascript_programming = {
             checkJs: false
         });
 
-        // Add INAV API type definitions
+        // Add INAV API type definitions (imported at top)
         try {
-            const apiDefinitions = require('./transpiler/api/definitions/index.js');
-            const { generateTypeDefinitions } = require('./transpiler/api/types.js');
             const typeDefinitions = generateTypeDefinitions(apiDefinitions);
 
             monaco.languages.typescript.javascriptDefaults.addExtraLib(
@@ -530,8 +529,7 @@ if (flight.homeDistance > 100) {
         const self = this;
 
         try {
-            const examples = require('./../js/transpiler/examples/index.js');
-
+            // examples imported at top
             if (!examples[exampleId]) {
                 console.error('Example not found:', exampleId);
                 return;
@@ -562,7 +560,7 @@ if (flight.homeDistance > 100) {
         const self = this;
 
         try {
-            const examples = require('../js/transpiler/examples/index.js');
+            // examples imported at top
             const $examplesSelect = $('#examples-select');
 
             if (!$examplesSelect.length) {
