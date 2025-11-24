@@ -93,9 +93,16 @@ class SemanticAnalyzer {
   analyze(ast) {
     this.errors = [];
     this.warnings = [];
-    
+
     if (!ast || !ast.statements || !Array.isArray(ast.statements)) {
       throw new Error('Invalid AST structure');
+    }
+
+    // Use parser's variableHandler if provided, otherwise create fresh one
+    if (ast.variableHandler) {
+      this.variableHandler = ast.variableHandler;
+    } else {
+      this.variableHandler = new VariableHandler();
     }
     
     // Perform all analysis passes

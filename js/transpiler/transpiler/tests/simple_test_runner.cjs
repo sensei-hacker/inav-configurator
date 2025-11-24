@@ -17,11 +17,17 @@ class TestRunner {
   }
 
   describe(name, fn) {
-    const suite = { name, tests: [], beforeEach: null };
+    const parentSuite = this.currentSuite;
+    const suite = {
+      name,
+      tests: [],
+      beforeEach: null,
+      parent: parentSuite
+    };
     this.suites.push(suite);
     this.currentSuite = suite;
     fn();
-    this.currentSuite = null;
+    this.currentSuite = parentSuite;
   }
 
   test(name, fn) {
@@ -47,9 +53,17 @@ class TestRunner {
 
       for (const test of suite.tests) {
         try {
-          // Run beforeEach if exists
-          if (suite.beforeEach) {
-            suite.beforeEach();
+          // Run beforeEach hooks from parent suites first, then this suite
+          const beforeEachHooks = [];
+          let currentSuite = suite;
+          while (currentSuite) {
+            if (currentSuite.beforeEach) {
+              beforeEachHooks.unshift(currentSuite.beforeEach);
+            }
+            currentSuite = currentSuite.parent;
+          }
+          for (const hook of beforeEachHooks) {
+            hook();
           }
 
           await test.fn();
@@ -185,7 +199,7 @@ class Assertions {
     }
   }
 
-  not() {
+  get not() {
     return new NegatedAssertions(this.actual);
   }
 }

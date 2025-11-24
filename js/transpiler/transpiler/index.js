@@ -65,6 +65,8 @@ class Transpiler {
       console.log("finished transpile() step 3");
 
       // Step 4: Generate INAV CLI commands
+      // Pass the analyzer's variableHandler to codegen
+      this.codegen.variableHandler = this.analyzer.variableHandler;
       const commands = this.codegen.generate(optimized);
       console.log("finished transpile() step 4");
 

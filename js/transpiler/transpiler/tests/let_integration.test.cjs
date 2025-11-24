@@ -271,6 +271,35 @@ describe('Var Variable Integration', () => {
   });
 });
 
+describe('Let Variable Reuse', () => {
+  test('Let variable used in multiple locations', () => {
+    const code = `
+      const { flight } = inav;
+      let time = flight.armTimer;
+
+      if (time > 1000) {
+        gvar[1] = time;
+      }
+    `;
+
+    const parser = new JavaScriptParser();
+    const ast = parser.parse(code);
+
+    const analyzer = new SemanticAnalyzer();
+    const analyzed = analyzer.analyze(ast);
+
+    const codegen = new INAVCodeGenerator(analyzer.variableHandler);
+    const commands = codegen.generate(analyzed.ast);
+
+    // Should substitute flight.armTimer in both condition and assignment
+    expect(commands.length).toBe(2);
+
+    // Both commands should reference FLIGHT (type 2) ARM_TIMER (value 0)
+    expect(commands[0]).toContain('2 0'); // Condition operand
+    expect(commands[1]).toContain('2 0'); // Assignment value
+  });
+});
+
 describe('Let and Var Mixed Usage', () => {
   test('Let for constants, var for mutables', () => {
     const code = `

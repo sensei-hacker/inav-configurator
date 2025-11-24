@@ -19,7 +19,6 @@ import { VariableHandler } from './variable_handler.js';
 class JavaScriptParser {
   constructor() {
     this.warnings = [];
-    this.variableHandler = new VariableHandler();
   }
 
   /**
@@ -29,6 +28,7 @@ class JavaScriptParser {
    */
   parse(code) {
     this.warnings = [];
+    this.variableHandler = new VariableHandler();  // Fresh handler for each parse
 
     try {
       // Parse with Acorn
@@ -42,6 +42,7 @@ class JavaScriptParser {
       // Transform to our simplified format
       const result = this.transformAST(acornAST);
       result.warnings = this.warnings;
+      result.variableHandler = this.variableHandler;  // Pass handler to analyzer
       return result;
     } catch (error) {
       // Enhance error message with location info
