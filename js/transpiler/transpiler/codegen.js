@@ -10,6 +10,7 @@
 'use strict';
 
 const { ArrowFunctionHelper } = require('./arrow_function_helper.js');
+const { ErrorHandler } = require('./error_handler.js');
 
 const {
   OPERAND_TYPE,
@@ -26,6 +27,7 @@ class INAVCodeGenerator {
   constructor() {
     this.lcIndex = 0; // Current logic condition index
     this.commands = [];
+    this.errorHandler = new ErrorHandler(); // Error and warning collection
     this.operandMapping = this.buildOperandMapping(apiDefinitions);
     this.arrowHelper = new ArrowFunctionHelper(this);
   }
@@ -78,6 +80,7 @@ class INAVCodeGenerator {
   generate(ast) {
     this.lcIndex = 0;
     this.commands = [];
+    this.errorHandler.reset(); // Clear any previous errors
 
     if (!ast || !ast.statements) {
       throw new Error('Invalid AST');
@@ -86,6 +89,9 @@ class INAVCodeGenerator {
     for (const stmt of ast.statements) {
       this.generateStatement(stmt);
     }
+
+    // Throw if any errors were collected during generation
+    this.errorHandler.throwIfErrors();
 
     return this.commands;
   }
@@ -103,7 +109,11 @@ class INAVCodeGenerator {
         // Ignore - just used for parser
         break;
       default:
-        console.warn(`Unknown statement type: ${stmt.type}`);
+        this.errorHandler.addError(
+          `Unsupported statement type: ${stmt.type}. Only assignments and event handlers are supported`,
+          stmt,
+          'unsupported_statement'
+        );
     }
   }
 
@@ -232,7 +242,11 @@ class INAVCodeGenerator {
    */
   generateEdge(stmt) {
     if (!stmt.args || stmt.args.length < 3) {
-      console.warn('edge() requires 3 arguments');
+      this.errorHandler.addError(
+        `edge() requires exactly 3 arguments (condition, duration, action). Got ${stmt.args?.length || 0}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -242,7 +256,11 @@ class INAVCodeGenerator {
     const actions = this.arrowHelper.extractBody(stmt.args[2]);
 
     if (!condition) {
-      console.warn('edge() condition must be an arrow function');
+      this.errorHandler.addError(
+        'edge() argument 1 must be an arrow function',
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -268,7 +286,11 @@ class INAVCodeGenerator {
    */
   generateSticky(stmt) {
     if (!stmt.args || stmt.args.length < 3) {
-      console.warn('sticky() requires 3 arguments');
+      this.errorHandler.addError(
+        `sticky() requires exactly 3 arguments (onCondition, offCondition, action). Got ${stmt.args?.length || 0}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -278,7 +300,11 @@ class INAVCodeGenerator {
     const actions = this.arrowHelper.extractBody(stmt.args[2]);
 
     if (!onCondition || !offCondition) {
-      console.warn('sticky() conditions must be arrow functions');
+      this.errorHandler.addError(
+        'sticky() arguments 1 and 2 must be arrow functions',
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -307,7 +333,11 @@ class INAVCodeGenerator {
    */
   generateDelay(stmt) {
     if (!stmt.args || stmt.args.length < 3) {
-      console.warn('delay() requires 3 arguments');
+      this.errorHandler.addError(
+        `delay() requires exactly 3 arguments (condition, duration, action). Got ${stmt.args?.length || 0}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -317,7 +347,11 @@ class INAVCodeGenerator {
     const actions = this.arrowHelper.extractBody(stmt.args[2]);
 
     if (!condition) {
-      console.warn('delay() condition must be an arrow function');
+      this.errorHandler.addError(
+        'delay() argument 1 must be an arrow function',
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -346,7 +380,11 @@ class INAVCodeGenerator {
    */
   generateTimer(stmt) {
     if (!stmt.args || stmt.args.length < 3) {
-      console.warn('timer() requires 3 arguments: onMs, offMs, action');
+      this.errorHandler.addError(
+        `timer() requires exactly 3 arguments (onMs, offMs, action). Got ${stmt.args?.length || 0}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -356,12 +394,20 @@ class INAVCodeGenerator {
     const actions = this.arrowHelper.extractBody(stmt.args[2]);
 
     if (typeof onMs !== 'number' || typeof offMs !== 'number') {
-      console.warn('timer() durations must be numeric literals');
+      this.errorHandler.addError(
+        `timer() durations must be numeric literals. Got: ${typeof onMs}, ${typeof offMs}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
     if (onMs <= 0 || offMs <= 0) {
-      console.warn('timer() durations must be positive values');
+      this.errorHandler.addError(
+        `timer() durations must be positive. Got: onMs=${onMs}ms, offMs=${offMs}ms`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -388,7 +434,11 @@ class INAVCodeGenerator {
    */
   generateWhenChanged(stmt) {
     if (!stmt.args || stmt.args.length < 3) {
-      console.warn('whenChanged() requires 3 arguments: value, threshold, action');
+      this.errorHandler.addError(
+        `whenChanged() requires exactly 3 arguments (value, threshold, action). Got ${stmt.args?.length || 0}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -398,12 +448,20 @@ class INAVCodeGenerator {
     const actions = this.arrowHelper.extractBody(stmt.args[2]);
 
     if (typeof threshold !== 'number') {
-      console.warn('whenChanged() threshold must be a numeric literal');
+      this.errorHandler.addError(
+        `whenChanged() threshold must be a numeric literal. Got: ${typeof threshold}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
     if (threshold <= 0) {
-      console.warn('whenChanged() threshold must be positive');
+      this.errorHandler.addError(
+        `whenChanged() threshold must be positive. Got: ${threshold}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -413,7 +471,11 @@ class INAVCodeGenerator {
     const valueOperand = this.getOperand(valueIdentifier);
 
     if (!valueOperand) {
-      console.warn(`whenChanged() invalid value: ${valueIdentifier}`);
+      this.errorHandler.addError(
+        `whenChanged() invalid value: ${valueIdentifier}`,
+        stmt,
+        'invalid_args'
+      );
       return;
     }
 
@@ -512,7 +574,11 @@ class INAVCodeGenerator {
       }
 
       default:
-        console.warn(`Unknown condition type: ${condition.type}`);
+        this.errorHandler.addError(
+          `Unsupported condition type: ${condition.type}. Use comparison operators (>, <, ===, etc.) and logical operators (&&, ||, !)`,
+          condition,
+          'unsupported_condition'
+        );
         return this.lcIndex;
     }
   }
@@ -597,15 +663,23 @@ class INAVCodeGenerator {
     if (target.startsWith('rc[')) {
       const channelMatch = target.match(/rc\[(\d+)\]/);
       if (!channelMatch) {
-        console.warn(`Invalid rc array syntax: ${target}`);
+        this.errorHandler.addError(
+          `Invalid RC channel syntax: '${target}'. Expected format: rc[0] through rc[17]`,
+          null,
+          'invalid_rc_syntax'
+        );
         return;
       }
 
       const channel = parseInt(channelMatch[1]);
 
       // Validate channel range
-      if (channel < 1 || channel > 18) {
-        console.warn(`RC channel ${channel} out of range (1-18)`);
+      if (channel < 0 || channel > 17) {
+        this.errorHandler.addError(
+          `RC channel ${channel} out of range. INAV supports rc[0] through rc[17]`,
+          null,
+          'rc_out_of_range'
+        );
         return;
       }
 
@@ -630,7 +704,11 @@ class INAVCodeGenerator {
       this.lcIndex++;
       return;
     }
-    console.warn(`Unknown assignment target: ${target}`);
+    this.errorHandler.addError(
+      `Cannot assign to '${target}'. Only gvar[0-7], rc[0-17], and override.* are writable`,
+      null,
+      'invalid_assignment_target'
+    );
   }
 
   /**
@@ -663,8 +741,12 @@ class INAVCodeGenerator {
         return this.operandMapping[value];
       }
 
-      console.warn(`Unknown operand: ${value}`);
-      return { type: OPERAND_TYPE.VALUE, value: 0 };
+      this.errorHandler.addError(
+        `Unknown operand '${value}'. Available: flight.*, rc.*, gvar[0-7], waypoint.*, pid.*`,
+        null,
+        'unknown_operand'
+      );
+      return { type: OPERAND_TYPE.VALUE, value: 0 }; // Return dummy value to continue collecting errors
     }
 
     // Handle expression objects (CallExpression, BinaryExpression, etc.)
@@ -692,7 +774,11 @@ class INAVCodeGenerator {
             expr.callee.property && expr.callee.property.name === 'abs') {
 
           if (!expr.arguments || expr.arguments.length !== 1) {
-            console.warn('Math.abs() requires exactly 1 argument');
+            this.errorHandler.addError(
+              `Math.abs() requires exactly 1 argument. Got ${expr.arguments?.length || 0}`,
+              expr,
+              'invalid_args'
+            );
             return { type: OPERAND_TYPE.VALUE, value: 0 };
           }
 
@@ -717,7 +803,13 @@ class INAVCodeGenerator {
           return { type: OPERAND_TYPE.LC, value: absId };
         }
 
-        console.warn(`Unsupported function call: ${expr.callee?.property?.name || 'unknown'}`);
+        const funcName = expr.callee?.property?.name ||
+                        (expr.callee?.name || 'unknown');
+        this.errorHandler.addError(
+          `Unsupported function: ${funcName}(). Supported: edge(), sticky(), delay(), timer(), whenChanged(), Math.abs()`,
+          expr,
+          'unsupported_function'
+        );
         return { type: OPERAND_TYPE.VALUE, value: 0 };
       }
 
@@ -737,7 +829,11 @@ class INAVCodeGenerator {
       }
 
       default:
-        console.warn(`Unsupported expression type: ${expr.type}`);
+        this.errorHandler.addError(
+          `Unsupported expression type: ${expr.type}. Use arithmetic operators (+, -, *, /) or supported functions`,
+          expr,
+          'unsupported_expression'
+        );
         return { type: OPERAND_TYPE.VALUE, value: 0 };
     }
   }
