@@ -9,7 +9,7 @@
 
 'use strict';
 
-import acorn from 'acorn';
+import * as acorn from 'acorn';
 
 /**
  * Production JavaScript Parser for INAV subset
