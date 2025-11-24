@@ -39,7 +39,7 @@ class VariableHandler {
   extractVariableDeclaration(node) {
     if (node.type !== 'VariableDeclaration') return null;
 
-    const kind = node.kind;  // 'let' or 'var'
+    const kind = node.kind;  // 'let', 'const', or 'var'
     const decl = node.declarations[0];
 
     if (!decl || !decl.id || decl.id.type !== 'Identifier') {
@@ -49,8 +49,11 @@ class VariableHandler {
     const name = decl.id.name;
     const initExpr = decl.init;  // Can be null for 'var x;'
 
+    // Treat 'const' as 'let' (both are immutable/substituted)
+    const declType = (kind === 'let' || kind === 'const') ? 'LetDeclaration' : 'VarDeclaration';
+
     return {
-      type: kind === 'let' ? 'LetDeclaration' : 'VarDeclaration',
+      type: declType,
       name,
       initExpr,      // Store the full expression AST (not just value!)
       loc: node.loc,
