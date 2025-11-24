@@ -608,4 +608,4 @@ class JavaScriptParser {
   }
 }
 
-module.exports = { JavaScriptParser };
+export { JavaScriptParser };

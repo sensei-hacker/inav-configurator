@@ -9,7 +9,7 @@
 
 'use strict';
 
-module.exports = {
+export default {
   // Math functions
   min: {
     type: 'function',

@@ -15,7 +15,7 @@
 
 const { OPERAND_TYPE, FLIGHT_PARAM } = require('../../transpiler/inav_constants.js');
 
-module.exports = {
+export default {
   // Timing
   armTimer: {
     type: 'number',

@@ -493,7 +493,7 @@ function setupDiagnostics(monaco, editor) {
   monaco.editor.setModelMarkers(model, 'inav-transpiler', diagnostics);
 }
 
-module.exports = {
+export {
   DiagnosticSeverity,
   createDiagnosticsProvider,
   setupDiagnostics

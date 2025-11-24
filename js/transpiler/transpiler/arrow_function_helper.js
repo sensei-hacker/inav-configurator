@@ -265,4 +265,4 @@ class ArrowFunctionHelper {
   }
 }
 
-module.exports = { ArrowFunctionHelper };
+export { ArrowFunctionHelper };

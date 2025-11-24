@@ -228,7 +228,7 @@ function setupLinting(editor, lintCallback, debounceMs = 500) {
 }
 
 // Export functions
-module.exports = {
+export {
     loadMonacoEditor,
     initializeMonacoEditor,
     addINAVTypeDefinitions,

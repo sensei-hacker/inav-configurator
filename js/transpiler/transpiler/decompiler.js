@@ -789,4 +789,4 @@ class Decompiler {
   }
 }
 
-module.exports = { Decompiler };
+export { Decompiler };

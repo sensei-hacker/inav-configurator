@@ -30,16 +30,17 @@ const { generateTypeDefinitions } = require('./api/types.js');
 // Examples
 const examples = require('./examples/index.js');
 
-// Export everything using CommonJS
-module.exports = Transpiler;
-module.exports.Transpiler = Transpiler;
-module.exports.JavaScriptParser = JavaScriptParser;
-module.exports.INAVCodeGenerator = INAVCodeGenerator;
-module.exports.apiDefinitions = apiDefinitions;
-module.exports.flightDefinitions = flightDefinitions;
-module.exports.overrideDefinitions = overrideDefinitions;
-module.exports.waypointDefinitions = waypointDefinitions;
-module.exports.rcDefinitions = rcDefinitions;
-module.exports.generateTypeDefinitions = generateTypeDefinitions;
-module.exports.examples = examples;
+// Export everything using ESM
+export {
+  Transpiler,
+  JavaScriptParser,
+  INAVCodeGenerator,
+  apiDefinitions,
+  flightDefinitions,
+  overrideDefinitions,
+  waypointDefinitions,
+  rcDefinitions,
+  generateTypeDefinitions,
+  examples
+};
 

@@ -9,7 +9,7 @@
 
 'use strict';
 
-module.exports = {
+export default {
   // Current waypoint info
   number: {
     type: 'number',

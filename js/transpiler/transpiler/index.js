@@ -373,4 +373,4 @@ class Transpiler {
   }
 }
 
-module.exports = { Transpiler };
+export { Transpiler };

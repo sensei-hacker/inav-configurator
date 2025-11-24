@@ -258,4 +258,4 @@ sticky(
   }
 };
 
-module.exports = examples;
+export default examples;

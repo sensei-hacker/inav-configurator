@@ -734,4 +734,4 @@ class SemanticAnalyzer {
   }
 }
 
-module.exports = { SemanticAnalyzer };
+export { SemanticAnalyzer };

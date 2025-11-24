@@ -892,4 +892,4 @@ class INAVCodeGenerator {
     }
 }
 
-module.exports = { INAVCodeGenerator };
+export { INAVCodeGenerator };

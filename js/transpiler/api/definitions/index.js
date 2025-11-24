@@ -9,7 +9,7 @@
 
 'use strict';
 
-module.exports = {
+export default {
   // Read-only telemetry and state
   flight: require('./flight.js'),
   
