@@ -15,8 +15,8 @@ import i18n from './../js/localization.js';
 import { Transpiler } from './../js/transpiler/index.js';
 import { Decompiler } from './../js/transpiler/transpiler/decompiler.js';
 import * as MonacoLoader from './../js/transpiler/editor/monaco_loader.js';
-import apiDefinitions from './transpiler/api/definitions/index.js';
-import { generateTypeDefinitions } from './transpiler/api/types.js';
+import apiDefinitions from './../js/transpiler/api/definitions/index.js';
+import { generateTypeDefinitions } from './../js/transpiler/api/types.js';
 import examples from './../js/transpiler/examples/index.js';
 
 
