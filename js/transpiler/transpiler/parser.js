@@ -188,7 +188,7 @@ class JavaScriptParser {
   }
 
   /**
-   * Transform variable declaration (const { flight } = inav)
+   * Transform variable declaration (const { flight } = inav, let x = ..., var y = ...)
    */
   transformVariableDeclaration(node) {
     // Look for: const { ... } = inav
@@ -204,6 +204,16 @@ class JavaScriptParser {
           range: node.range
         };
       }
+    }
+
+    // Handle let/var declarations via VariableHandler
+    const varDecl = this.variableHandler.extractVariableDeclaration(node);
+    if (varDecl) {
+      // Transform the initExpr from Acorn AST to our format
+      if (varDecl.initExpr) {
+        varDecl.initExpr = this.transformExpression(varDecl.initExpr);
+      }
+      return varDecl;
     }
 
     return null;
@@ -473,8 +483,8 @@ class JavaScriptParser {
       return {
         type: 'BinaryExpression',
         operator: expr.operator,
-        left: expr.left,
-        right: expr.right
+        left: this.transformExpression(expr.left),
+        right: this.transformExpression(expr.right)
       };
     }
 

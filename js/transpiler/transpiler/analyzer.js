@@ -102,7 +102,12 @@ class SemanticAnalyzer {
     for (const stmt of ast.statements) {
       this.analyzeStatement(stmt);
     }
-    
+
+    // Process variables: detect used gvars and allocate slots
+    this.variableHandler.detectUsedGvars(ast);
+    this.variableHandler.allocateGvarSlots();
+    this.errors.push(...this.variableHandler.getErrors());
+
     // Additional analysis passes
     this.detectDeadCode(ast);
     this.detectConflicts(ast);
@@ -126,8 +131,14 @@ class SemanticAnalyzer {
    */
   analyzeStatement(stmt) {
     if (!stmt) return;
-    
+
     switch (stmt.type) {
+      case 'LetDeclaration':
+        this.handleLetDeclaration(stmt);
+        break;
+      case 'VarDeclaration':
+        this.handleVarDeclaration(stmt);
+        break;
       case 'Assignment':
         this.checkAssignment(stmt);
         break;
@@ -136,13 +147,32 @@ class SemanticAnalyzer {
         break;
     }
   }
+
+  /**
+   * Handle let variable declaration
+   */
+  handleLetDeclaration(stmt) {
+    this.variableHandler.addLetVariable(stmt.name, stmt.initExpr, stmt.loc);
+  }
+
+  /**
+   * Handle var variable declaration
+   */
+  handleVarDeclaration(stmt) {
+    this.variableHandler.addVarVariable(stmt.name, stmt.initExpr, stmt.loc);
+  }
   
   /**
    * Check assignment statement
    */
   checkAssignment(stmt) {
     const line = stmt.loc ? stmt.loc.start.line : 0;
-    
+
+    // Check for let reassignment (error)
+    if (this.variableHandler.checkLetReassignment(stmt.target, stmt.loc)) {
+      return; // Error already added by variableHandler
+    }
+
     // Check if target is valid
     if (stmt.target.startsWith('gvar[')) {
       const index = this.extractGvarIndex(stmt.target);
@@ -157,6 +187,9 @@ class SemanticAnalyzer {
           line
         });
       }
+    } else if (this.variableHandler.isVariable(stmt.target)) {
+      // Variable assignment - allowed for var variables
+      // (let reassignment already caught above)
     } else if (!this.isValidWritableProperty(stmt.target)) {
       this.errors.push({
         message: `Cannot assign to '${stmt.target}'. Not a valid INAV writable property.`,
@@ -325,7 +358,12 @@ class SemanticAnalyzer {
    */
   checkPropertyAccess(propPath, line) {
     if (!propPath || typeof propPath !== 'string') return;
-    
+
+    // Check if it's a variable (skip validation)
+    if (this.variableHandler.isVariable(propPath)) {
+      return;
+    }
+
     // Handle gvar access
     if (propPath.startsWith('gvar[')) {
       const index = this.extractGvarIndex(propPath);

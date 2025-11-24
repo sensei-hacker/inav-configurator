@@ -172,8 +172,15 @@ class Assertions {
       this.actual();
       throw new Error('Expected function to throw');
     } catch (error) {
-      if (expectedMessage && !error.message.includes(expectedMessage)) {
-        throw new Error(`Expected error message to contain "${expectedMessage}", got "${error.message}"`);
+      if (expectedMessage) {
+        // Handle regex pattern
+        if (expectedMessage instanceof RegExp) {
+          if (!expectedMessage.test(error.message)) {
+            throw new Error(`Expected error message to match ${expectedMessage}, got "${error.message}"`);
+          }
+        } else if (!error.message.includes(expectedMessage)) {
+          throw new Error(`Expected error message to contain "${expectedMessage}", got "${error.message}"`);
+        }
       }
     }
   }
