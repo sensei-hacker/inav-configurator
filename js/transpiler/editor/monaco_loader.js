@@ -9,7 +9,8 @@
 
 'use strict';
 
-import path from 'node:path';
+import apiDefinitions from '../api/definitions/index.js';
+import { generateTypeDefinitions } from '../api/types.js';
 
 /**
  * Load Monaco Editor
@@ -23,41 +24,18 @@ function loadMonacoEditor() {
                 resolve(window.monaco);
                 return;
             }
-            
-            // Find monaco-editor path
-            let monacoBasePath;
-            try {
-                monacoBasePath = path.dirname(require.resolve('monaco-editor/package.json'));
-            } catch (e) {
-                monacoBasePath = path.join(__dirname, '../../node_modules/monaco-editor');
-            }
-            
+
+            // In Vite/browser environment, use relative path to node_modules
+            // Vite will handle module resolution
+            const monacoBasePath = '/node_modules/monaco-editor';
+
             // Use the min build which includes everything
-            const vsPath = path.join(monacoBasePath, 'min/vs');
-            const editorMainPath = path.join(vsPath, 'editor/editor.main.js');
-            
+            const vsPath = monacoBasePath + '/min/vs';
+
             console.log('Loading Monaco from:', vsPath);
-            
-            // Method 1: Try loading editor.main.js directly
-            const editorScript = document.createElement('script');
-            editorScript.src = 'file://' + editorMainPath.replace(/\\/g, '/');
-            
-            editorScript.onerror = () => {
-                // Method 2: If direct load fails, try AMD loader
-                console.log('Direct load failed, trying AMD loader...');
-                loadMonacoViaAMD(vsPath, resolve, reject);
-            };
-            
-            editorScript.onload = () => {
-                if (window.monaco) {
-                    console.log('Monaco loaded via direct script');
-                    resolve(window.monaco);
-                } else {
-                    loadMonacoViaAMD(vsPath, resolve, reject);
-                }
-            };
-            
-            document.head.appendChild(editorScript);
+
+            // Monaco requires AMD loader, so use that directly
+            loadMonacoViaAMD(vsPath, resolve, reject);
             
         } catch (error) {
             console.error('Failed to load Monaco Editor:', error);
@@ -78,15 +56,15 @@ function loadMonacoViaAMD(vsPath, resolve, reject) {
         getWorkerUrl: function(workerId, label) {
             return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
                 self.MonacoEnvironment = {
-                    baseUrl: 'file://${vsPath.replace(/\\/g, '/')}'
+                    baseUrl: '${vsPath}'
                 };
-                importScripts('file://${vsPath.replace(/\\/g, '/')}/base/worker/workerMain.js');
+                importScripts('${vsPath}/base/worker/workerMain.js');
             `)}`;
         }
     };
-    
+
     const loaderScript = document.createElement('script');
-    loaderScript.src = 'file://' + vsPath.replace(/\\/g, '/') + '/loader.js';
+    loaderScript.src = vsPath + '/loader.js';
     
     loaderScript.onerror = () => {
         reject(new Error('Failed to load Monaco loader.js'));
@@ -97,7 +75,7 @@ function loadMonacoViaAMD(vsPath, resolve, reject) {
             // Configure the loader
             window.require.config({
                 paths: {
-                    'vs': 'file://' + vsPath.replace(/\\/g, '/')
+                    'vs': vsPath
                 },
                 'vs/nls': {
                     availableLanguages: {}
@@ -191,8 +169,6 @@ function initializeMonacoEditor(monaco, containerId, options = {}) {
  */
 function addINAVTypeDefinitions(monaco) {
     try {
-        const apiDefinitions = require('./../api/definitions/index.js');
-        const { generateTypeDefinitions } = require('./../api/types.js');
         const typeDefinitions = generateTypeDefinitions(apiDefinitions);
         
         monaco.languages.typescript.javascriptDefaults.addExtraLib(
