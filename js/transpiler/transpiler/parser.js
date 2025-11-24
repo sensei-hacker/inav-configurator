@@ -9,7 +9,7 @@
 
 'use strict';
 
-const acorn = require('acorn');
+import acorn from 'acorn';
 
 /**
  * Production JavaScript Parser for INAV subset

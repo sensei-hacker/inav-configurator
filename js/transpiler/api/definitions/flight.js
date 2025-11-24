@@ -13,7 +13,7 @@
 
 'use strict';
 
-const { OPERAND_TYPE, FLIGHT_PARAM } = require('../../transpiler/inav_constants.js');
+import { OPERAND_TYPE, FLIGHT_PARAM } from '../../transpiler/inav_constants.js';
 
 export default {
   // Timing

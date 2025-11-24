@@ -9,7 +9,9 @@
 
 'use strict';
 
-const { getDefinition, isWritable  } = require('../api/definitions/index.js');
+// TODO: getDefinition and isWritable functions don't exist in api/definitions/index.js
+// This import may need to be fixed or these functions implemented
+import apiDefinitions from '../api/definitions/index.js';
 
 /**
  * Severity levels for diagnostics

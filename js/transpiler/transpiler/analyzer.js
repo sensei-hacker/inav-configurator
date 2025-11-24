@@ -14,8 +14,8 @@
 
 'use strict';
 
-const { OPERAND_TYPE, OPERATION } = require('./inav_constants.js');
-const apiDefinitions = require('./../api/definitions/index.js');
+import { OPERAND_TYPE, OPERATION } from './inav_constants.js';
+import apiDefinitions from './../api/definitions/index.js';
 
 /**
  * Semantic Analyzer for INAV JavaScript subset

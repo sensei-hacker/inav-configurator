@@ -9,7 +9,7 @@
 
 'use strict';
 
-const path = require('path');
+import path from 'node:path';
 
 /**
  * Load Monaco Editor

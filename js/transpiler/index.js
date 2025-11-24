@@ -12,23 +12,23 @@
  *   const result = transpiler.transpile(code);
  */
 
-// Core transpiler - require instead of import
-const { Transpiler } = require('./transpiler/index.js');
-const { JavaScriptParser } = require('./transpiler/parser.js');
-const { INAVCodeGenerator } = require('./transpiler/codegen.js');
+// Core transpiler
+import { Transpiler } from './transpiler/index.js';
+import { JavaScriptParser } from './transpiler/parser.js';
+import { INAVCodeGenerator } from './transpiler/codegen.js';
 
 // API definitions
-const apiDefinitions = require('./api/definitions/index.js');
-const flightDefinitions = require('./api/definitions/flight.js');
-const overrideDefinitions = require('./api/definitions/override.js');
-const waypointDefinitions = require('./api/definitions/waypoint.js');
-const rcDefinitions = require('./api/definitions/rc.js');
+import apiDefinitions from './api/definitions/index.js';
+import flightDefinitions from './api/definitions/flight.js';
+import overrideDefinitions from './api/definitions/override.js';
+import waypointDefinitions from './api/definitions/waypoint.js';
+import rcDefinitions from './api/definitions/rc.js';
 
 // Type generation
-const { generateTypeDefinitions } = require('./api/types.js');
+import { generateTypeDefinitions } from './api/types.js';
 
 // Examples
-const examples = require('./examples/index.js');
+import examples from './examples/index.js';
 
 // Export everything using ESM
 export {

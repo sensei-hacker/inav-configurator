@@ -9,15 +9,15 @@
 
 'use strict';
 
-const { ArrowFunctionHelper } = require('./arrow_function_helper.js');
-const { ErrorHandler } = require('./error_handler.js');
+import { ArrowFunctionHelper } from './arrow_function_helper.js';
+import { ErrorHandler } from './error_handler.js';
 
-const {
+import {
   OPERAND_TYPE,
   OPERATION,
   getOperationName
-} = require('./inav_constants.js');
-const apiDefinitions = require('./../api/definitions/index.js');
+} from './inav_constants.js';
+import apiDefinitions from './../api/definitions/index.js';
 
 /**
  * INAV Code Generator

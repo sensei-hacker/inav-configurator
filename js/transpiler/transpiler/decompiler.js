@@ -9,14 +9,14 @@
 
 'use strict';
 
-const {
+import {
   OPERAND_TYPE,
   OPERATION,
   FLIGHT_MODE,
   getFlightParamName,
   getOperationName
-} = require('./inav_constants.js');
-const apiDefinitions = require('./../api/definitions/index.js');
+} from './inav_constants.js';
+import apiDefinitions from './../api/definitions/index.js';
 
 /**
  * Decompiler class

@@ -8,12 +8,12 @@
 
 'use strict';
 
-const { JavaScriptParser } = require('./parser.js');
-const { INAVCodeGenerator } = require('./codegen.js');
-const { Optimizer } = require('./optimizer.js');
-const { SemanticAnalyzer } = require('./analyzer.js');
-const { OPERAND_TYPE, OPERATION } = require('./inav_constants.js');
-const { INAV_CONSTANTS } = require('./constants.js');
+import { JavaScriptParser } from './parser.js';
+import { INAVCodeGenerator } from './codegen.js';
+import { Optimizer } from './optimizer.js';
+import { SemanticAnalyzer } from './analyzer.js';
+import { OPERAND_TYPE, OPERATION } from './inav_constants.js';
+import { INAV_CONSTANTS } from './constants.js';
 
 /**
  * Main Transpiler Class
