@@ -26,7 +26,45 @@ class Transpiler {
     this.optimizer = new Optimizer();
     this.analyzer = new SemanticAnalyzer();
   }
-  
+
+  /**
+   * Checks if code contains an INAV module import statement
+   * Matches various import syntaxes:
+   * - import * as inav from 'inav'
+   * - import { flight } from 'inav'
+   * - import inav from 'inav'
+   * - const inav = require('inav')
+   *
+   * @param {string} code - JavaScript source code
+   * @returns {boolean} True if INAV import exists
+   */
+  hasInavImport(code) {
+    // Pattern matches ESM imports and CommonJS requires for 'inav' module
+    // (?:...) = non-capturing group
+    // \s+ = one or more whitespace
+    // ['"] = single or double quotes
+    const pattern = /(?:import\s+(?:\*\s+as\s+)?\w+|import\s*{[^}]*})\s+from\s+['"]inav['"]|const\s+\w+\s*=\s*require\(['"]inav['"]\)/;
+    return pattern.test(code);
+  }
+
+  /**
+   * Prepends INAV import to code if missing
+   * Auto-inserts: import * as inav from 'inav';
+   *
+   * This is transparent to the user - the import is added only for transpilation,
+   * not saved to their code or visible in the editor.
+   *
+   * @param {string} code - JavaScript source code
+   * @returns {string} Code with INAV import (if it was missing)
+   */
+  ensureInavImport(code) {
+    if (!this.hasInavImport(code)) {
+      // Prepend import with blank line for readability
+      return "import * as inav from 'inav';\n\n" + code;
+    }
+    return code;
+  }
+
   /**
    * Transpile JavaScript code to INAV CLI commands
    * @param {string} code - JavaScript source code
@@ -38,11 +76,14 @@ class Transpiler {
       if (!code || typeof code !== 'string') {
         throw new Error(INAV_CONSTANTS.ERROR_MESSAGES.INVALID_INPUT_TYPE());
       }
-      
+
       if (code.trim().length === 0) {
         throw new Error(INAV_CONSTANTS.ERROR_MESSAGES.EMPTY_INPUT());
       }
-      
+
+      // Auto-insert INAV import if missing (transparent to user)
+      code = this.ensureInavImport(code);
+
       // Step 1: Parse JavaScript to AST
       const parseResult = this.parser.parse(code);
       const ast = parseResult.statements ? parseResult : { statements: parseResult };
@@ -120,7 +161,7 @@ class Transpiler {
       if (!code || typeof code !== 'string') {
         throw new Error(INAV_CONSTANTS.ERROR_MESSAGES.INVALID_INPUT_TYPE());
       }
-      
+
       if (code.trim().length === 0) {
         return {
           success: true,
@@ -129,7 +170,10 @@ class Transpiler {
           stats: { statements: 0, estimatedLogicConditions: 0 }
         };
       }
-      
+
+      // Auto-insert INAV import if missing (transparent to user)
+      code = this.ensureInavImport(code);
+
       // Parse
       const parseResult = this.parser.parse(code);
       const ast = parseResult.statements ? parseResult : { statements: parseResult };
