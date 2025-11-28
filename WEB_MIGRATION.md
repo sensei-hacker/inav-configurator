@@ -77,7 +77,7 @@ This document outlines the high-level checklist and key files that would need to
 ## Key Files That Need Changes
 
 ### Core Electron Files (Remove/Replace)
-| File | Description | Action |
+| File | Description | Required Action |
 |------|-------------|--------|
 | `js/main/main.js` | Electron main process | Remove entirely |
 | `js/main/preload.js` | Electron preload script | Remove entirely |
@@ -137,7 +137,7 @@ This document outlines the high-level checklist and key files that would need to
 The web version will require browsers that support:
 
 1. **Web Serial API** - For flight controller communication
-   - Chrome 89+, Edge 89+, Opera 76+
+   - Chrome 89+, Edge 89+, Opera 75+
    - Not supported in Firefox, Safari
 
 2. **WebUSB API** - For DFU firmware flashing
@@ -203,6 +203,6 @@ The web version will require browsers that support:
 | WebSocket | ✅ | ✅ | ✅ | ✅ |
 | IndexedDB | ✅ | ✅ | ✅ | ✅ |
 
-*Firefox has experimental Web Bluetooth support behind a flag
+*Firefox has experimental Web Bluetooth support behind a flag (requires `dom.bluetooth.enabled` to be set to `true` in `about:config`)
 
 **Note:** Due to the limited browser support for Web Serial API and WebUSB, the web version would primarily target Chromium-based browsers (Chrome, Edge, Opera, Brave).
