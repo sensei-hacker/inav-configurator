@@ -215,7 +215,7 @@ These can share code if you create a thin abstraction layer that detects the env
 
 To maximize code sharing, implement a **platform abstraction layer**:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Application Code                      │
 │         (tabs, UI, MSP protocol, settings, etc.)        │
@@ -244,9 +244,17 @@ To maximize code sharing, implement a **platform abstraction layer**:
    ```javascript
    const isElectron = typeof window.electronAPI !== 'undefined';
    const store = {
-       get: (key, defaultValue) => isElectron 
-           ? window.electronAPI.storeGet(key, defaultValue)
-           : JSON.parse(localStorage.getItem(key)) ?? defaultValue,
+       get: (key, defaultValue) => {
+           if (isElectron) {
+               return window.electronAPI.storeGet(key, defaultValue);
+           }
+           try {
+               const item = localStorage.getItem(key);
+               return item !== null ? JSON.parse(item) : defaultValue;
+           } catch (e) {
+               return defaultValue;
+           }
+       },
        set: (key, value) => isElectron
            ? window.electronAPI.storeSet(key, value)
            : localStorage.setItem(key, JSON.stringify(value)),
