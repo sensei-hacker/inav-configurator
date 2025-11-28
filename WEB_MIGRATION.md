@@ -175,6 +175,95 @@ The web version will require browsers that support:
 
 ---
 
+## Shared Code: What Works for Both Electron AND Web
+
+Several changes can be implemented in a way that works for **both** Electron and web apps using the same codebase. This enables a hybrid approach where a single codebase can target both platforms.
+
+### ✅ Fully Compatible (Same Code for Both)
+
+| Category | Approach | Notes |
+|----------|----------|-------|
+| **BLE/Bluetooth** | Web Bluetooth API | Already uses `navigator.bluetooth` which works in both Electron and browsers |
+| **USB/DFU** | WebUSB API | `navigator.usb` works in both Electron (Chromium-based) and browsers |
+| **Storage** | localStorage/IndexedDB | These Web APIs work identically in Electron and browsers |
+| **Dialogs (alerts/confirms)** | Custom HTML dialogs | The app already uses `jbox`/`smalltalk` for dialogs - works everywhere |
+| **External Links** | `target="_blank"` | Standard HTML links work in both environments |
+| **UI/Rendering** | All HTML/CSS/JS | The entire UI layer is already web-based and fully compatible |
+
+### 🔄 Compatible with Abstraction Layer
+
+These can share code if you create a thin abstraction layer that detects the environment and uses the appropriate implementation:
+
+| Category | Electron Implementation | Web Implementation | Shared Interface |
+|----------|------------------------|-------------------|------------------|
+| **Serial Communication** | Node.js `serialport` via IPC | Web Serial API (`navigator.serial`) | Abstract `SerialConnection` class |
+| **File Open** | `dialog.showOpenDialog` | `<input type="file">` or File System Access API | `openFile()` function |
+| **File Save** | `dialog.showSaveDialog` + `fs.writeFile` | Download link or File System Access API | `saveFile(data, filename)` function |
+| **Settings Storage** | `electron-store` (can switch to localStorage) | localStorage/IndexedDB | `store.get()`/`store.set()` interface (already exists!) |
+
+### ❌ Electron-Only Features (Cannot Share Code)
+
+| Feature | Reason | Web Alternative |
+|---------|--------|-----------------|
+| **SITL** | Requires spawning native executables | Remote SITL via WebSocket proxy, or omit feature |
+| **TCP/UDP Sockets** | Node.js `net`/`dgram` modules | WebSocket proxy server required |
+| **Native Menus** | Electron-specific APIs | Browser has no equivalent (use in-app menus) |
+| **System Tray** | Electron-specific APIs | Not applicable to web |
+| **Auto-Updates** | Electron auto-updater | PWA update mechanism or manual |
+
+### Recommended Hybrid Architecture
+
+To maximize code sharing, implement a **platform abstraction layer**:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Application Code                      │
+│         (tabs, UI, MSP protocol, settings, etc.)        │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Platform Abstraction                    │
+│    store.js, dialog.js, connection classes, etc.        │
+└─────────────────────────────────────────────────────────┘
+                     │              │
+          ┌──────────┘              └──────────┐
+          ▼                                    ▼
+┌─────────────────────┐              ┌─────────────────────┐
+│   Electron Backend  │              │    Web Backend      │
+│  - IPC handlers     │              │  - Web Serial API   │
+│  - Node.js serial   │              │  - WebUSB           │
+│  - Native dialogs   │              │  - File APIs        │
+│  - SITL support     │              │  - localStorage     │
+└─────────────────────┘              └─────────────────────┘
+```
+
+### Quick Wins for Shared Codebase
+
+1. **`js/store.js`** - Already has the right interface! Just add localStorage fallback:
+   ```javascript
+   const isElectron = typeof window.electronAPI !== 'undefined';
+   const store = {
+       get: (key, defaultValue) => isElectron 
+           ? window.electronAPI.storeGet(key, defaultValue)
+           : JSON.parse(localStorage.getItem(key)) ?? defaultValue,
+       set: (key, value) => isElectron
+           ? window.electronAPI.storeSet(key, value)
+           : localStorage.setItem(key, JSON.stringify(value)),
+   };
+   ```
+
+2. **`js/connection/connectionBle.js`** - Already uses Web Bluetooth API, works as-is in both!
+
+3. **`js/connection/connectionSerial.js`** - Can detect environment and use Web Serial API in browser:
+   ```javascript
+   const isElectron = typeof window.electronAPI !== 'undefined';
+   // Use electronAPI.serialConnect() in Electron
+   // Use navigator.serial in browser
+   ```
+
+---
+
 ## Estimated Effort by Category
 
 | Category | Effort | Complexity |
