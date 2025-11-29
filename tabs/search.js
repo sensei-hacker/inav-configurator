@@ -1,4 +1,5 @@
 import { GUI, TABS } from './../js/gui.js';
+import path from 'node:path';
 import i18n from './../js/localization.js';
 
 
@@ -184,12 +185,12 @@ TABS.search.initialize = function (callback) {
         TABS.search.searchMessages(document.getElementById('search-keyword').value);
       }
     }
-    import('./search.html?raw').then(({default: html}) => GUI.load(html, function () {
+    GUI.load(path.join(__dirname, "search.html"), function () {
         i18n.localize();
         document.getElementById('search-label').addEventListener('click', searchKeyword, false);
         document.getElementById('search-keyword').addEventListener('keyup', searchKeywordTyping, false);
         GUI.content_ready(callback);
-    }));
+    } );
     self.getMessages();
     for (let tab of tabNames) {
         self.indexTab(tab);
