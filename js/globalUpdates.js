@@ -22,7 +22,7 @@ var update = {
 
             // If this is a master branch firmware, this will find a 404 as there is no tag tree. So default to master for docs.
             $.ajax({
-                url: bridge.proxy(globalSettings.docsTreeLocation + 'Settings.md'),
+                url: globalSettings.docsTreeLocation + 'Settings.md',
                 method: "HEAD",
                 statusCode: {
                     404: function () {

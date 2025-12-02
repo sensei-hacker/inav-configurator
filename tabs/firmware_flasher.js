@@ -212,7 +212,8 @@ TABS.firmware_flasher.initialize = function (callback) {
                         "releaseUrl": release.html_url,
                         "name"      : semver.clean(release.name),
                         "version"   : release.tag_name,
-                        "url"       : asset.browser_download_url,
+                        // Use GitHub Pages URL (has CORS headers) instead of GitHub Releases
+                        "url"       : `https://inavflight.github.io/firmware/${release.tag_name}/${asset.name}`,
                         "file"      : asset.name,
                         "raw_target": result.raw_target,
                         "target"    : result.target,
@@ -266,7 +267,8 @@ TABS.firmware_flasher.initialize = function (callback) {
                             "releaseUrl": release.html_url,
                             "name"      : semver.clean(release.name),
                             "version"   : release.tag_name,
-                            "url"       : asset.browser_download_url,
+                            // Use GitHub Pages URL (has CORS headers) instead of GitHub Releases
+                            "url"       : `https://inavflight.github.io/firmware/${release.tag_name}/${asset.name}`,
                             "file"      : asset.name,
                             "raw_target": result.raw_target,
                             "target"    : result.target,
@@ -503,10 +505,9 @@ TABS.firmware_flasher.initialize = function (callback) {
             if (summary) { // undefined while list is loading or while running offline
                 fileName = summary.file;
                 $(".load_remote_file").text(i18n.getMessage('firmwareFlasherButtonLoading')).addClass('disabled');
-                
-                const url = bridge.proxy(summary.url);
-                
-                $.get(url, function (data) {
+
+                // No proxy needed - GitHub Pages has CORS headers
+                $.get(summary.url, function (data) {
                     enable_load_online_button();
                     process_hex(data, summary);
                 }).fail(failed_to_load);
