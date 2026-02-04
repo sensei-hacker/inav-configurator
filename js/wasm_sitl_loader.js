@@ -9,34 +9,11 @@
  * Architecture:
  * - Loads SITL.wasm (compiled firmware) and SITL.elf (Emscripten glue code)
  * - Initializes Emscripten runtime with browser-compatible settings
- * - Exports MSP interface for direct function calls from JavaScript
+ * - Provides serial byte interface (serialWriteByte/serialReadByte/serialAvailable)
+ * - MSP communication uses the standard serial layer via ConnectionWasm
  * - Handles errors gracefully with user-friendly messages
  *
- * Usage Example:
- * ```javascript
- * import { WasmSitlLoader } from './wasm_sitl_loader.js';
- *
- * // Check browser compatibility
- * if (!WasmSitlLoader.isWasmSupported()) {
- *     alert('Your browser does not support WebAssembly');
- *     return;
- * }
- *
- * // Create loader
- * const loader = new WasmSitlLoader();
- *
- * // Load the module
- * try {
- *     const module = await loader.load();
- *     console.log('SITL loaded successfully');
- *
- *     // Send MSP command (example: MSP_API_VERSION = 1)
- *     const reply = loader.processMspCommand(1, null);
- *     console.log('API Version:', reply[1] + '.' + reply[2]);
- * } catch (error) {
- *     console.error('Failed to load SITL:', error);
- * }
- * ```
+ * Usage: See ConnectionWasm for the connection interface.
  */
 
 class WasmSitlLoader {
@@ -235,9 +212,11 @@ class WasmSitlLoader {
                 onRuntimeInitialized: () => {
                     console.log('[WASM SITL] Runtime initialized');
 
-                    // Verify that the MSP bridge function is exported
-                    if (typeof Module._wasm_msp_process_command !== 'function') {
-                        reject(new Error('MSP bridge function not found. The WASM module may not be built correctly.'));
+                    // Verify that the serial interface functions are exported
+                    if (typeof Module._serialWriteByte !== 'function' ||
+                        typeof Module._serialReadByte !== 'function' ||
+                        typeof Module._serialAvailable !== 'function') {
+                        reject(new Error('Serial interface functions not found. The WASM module may not be built correctly.'));
                         return;
                     }
 
@@ -329,72 +308,6 @@ class WasmSitlLoader {
      */
     setReconnectCallback(callback) {
         this._reconnectCallback = callback;
-    }
-
-    /**
-     * Process an MSP command through the WASM SITL
-     * This is a convenience wrapper around the Module._wasm_msp_process_command function
-     *
-     * @param {number} cmdId - MSP command ID (e.g., 1 = MSP_API_VERSION, 101 = MSP_STATUS)
-     * @param {Uint8Array} cmdData - Command payload data (can be empty/null for commands with no payload)
-     * @returns {Uint8Array} MSP response data
-     * @throws {Error} If module is not loaded or command processing fails
-     */
-    processMspCommand(cmdId, cmdData = null) {
-        if (!this._isLoaded || !this._module) {
-            throw new Error('WASM module is not loaded');
-        }
-
-        const Module = this._module;
-
-        const cmdLen = cmdData ? cmdData.length : 0;
-        const replyMaxSize = 1024; // Max MSP reply size
-
-        let cmdPtr = 0;
-        const replyPtr = Module._malloc(replyMaxSize);
-
-        try {
-            // Allocate and copy command data if present
-            if (cmdData && cmdLen > 0) {
-                cmdPtr = Module._malloc(cmdLen);
-                Module.HEAPU8.set(cmdData, cmdPtr);
-            }
-
-            // Call the WASM MSP processor
-            // int wasm_msp_process_command(uint16_t cmdId, uint8_t *cmdData, int cmdLen,
-            //                               uint8_t *replyData, int replyMaxLen)
-            // Returns: >= 0 = reply length, -1 = error, -2 = buffer too small, -3 = invalid params
-            const replyLength = Module._wasm_msp_process_command(
-                cmdId,
-                cmdPtr,
-                cmdLen,
-                replyPtr,
-                replyMaxSize
-            );
-
-            if (replyLength < 0) {
-                const errorMsg = replyLength === -1 ? 'MSP_RESULT_ERROR'
-                    : replyLength === -2 ? 'Reply buffer too small'
-                    : replyLength === -3 ? 'Invalid parameters'
-                    : `Unknown error code: ${replyLength}`;
-                throw new Error(`MSP command ${cmdId} failed: ${errorMsg}`);
-            }
-
-            // Copy reply data from WASM memory using getValue
-            const reply = new Uint8Array(replyLength);
-            for (let i = 0; i < replyLength; i++) {
-                reply[i] = Module.getValue(replyPtr + i, 'i8') & 0xFF;
-            }
-
-            return reply;
-
-        } finally {
-            // Always free the allocated memory
-            if (cmdPtr) {
-                Module._free(cmdPtr);
-            }
-            Module._free(replyPtr);
-        }
     }
 }
 
