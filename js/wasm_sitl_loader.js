@@ -43,9 +43,13 @@ class WasmSitlLoader {
 
     constructor() {
         this._module = null;
+        this._scriptTag = null;  // Track script tag so we can remove it on reload
         this._isLoaded = false;
         this._isLoading = false;
         this._loadError = null;
+        this._dataCallback = null;
+        this._rebootCallback = null;
+        this._reconnectCallback = null;
     }
 
     /**
@@ -105,6 +109,71 @@ class WasmSitlLoader {
     }
 
     /**
+     * Dispose of the WASM module completely
+     * This returns the loader to initial state, as if it was just created
+     * Safe to call multiple times - will skip if already disposed
+     */
+    dispose() {
+        // If already disposed, skip
+        if (!this._module && !this._scriptTag && !this._isLoaded) {
+            console.log('[WASM SITL] Already disposed, skipping');
+            return;
+        }
+
+        console.log('[WASM SITL] Disposing module...');
+
+        // Stop main loop if running
+        if (this._module && this._module._stopMainLoop) {
+            try {
+                this._module._stopMainLoop();
+                console.log('[WASM SITL] Main loop stopped');
+            } catch (e) {
+                console.warn('[WASM SITL] Error stopping main loop:', e);
+            }
+        }
+
+        // Remove script tag from DOM
+        if (this._scriptTag && this._scriptTag.parentNode) {
+            try {
+                this._scriptTag.parentNode.removeChild(this._scriptTag);
+                console.log('[WASM SITL] Script tag removed from DOM');
+            } catch (e) {
+                console.warn('[WASM SITL] Error removing script tag:', e);
+            }
+            this._scriptTag = null;
+        }
+
+        // Clear global Module object
+        if (typeof window.Module !== 'undefined') {
+            window.Module = undefined;
+            console.log('[WASM SITL] Global Module object cleared');
+        }
+
+        // Clear instance state
+        this._module = null;
+        this._isLoaded = false;
+        this._isLoading = false;
+        this._loadError = null;
+
+        // Clear callbacks
+        this._dataCallback = null;
+        this._rebootCallback = null;
+        this._reconnectCallback = null;
+
+        console.log('[WASM SITL] Module disposed - returned to initial state');
+    }
+
+    /**
+     * Reload the WASM module (for manual reload, not used by reboot)
+     * @returns {Promise<object>} Reloaded Emscripten Module
+     */
+    async reload() {
+        console.log('[WASM SITL] Reloading module...');
+        this.dispose();
+        return await this.load();
+    }
+
+    /**
      * Load the Emscripten glue code which will automatically load the WASM binary
      * @private
      * @returns {Promise<object>} Initialized Module
@@ -120,8 +189,28 @@ class WasmSitlLoader {
                 // Disable filesystem access (not needed for SITL)
                 noFSInit: true,
 
-                // Memory settings
-                TOTAL_MEMORY: 64 * 1024 * 1024, // 64 MB should be plenty for SITL
+                // Memory is managed by WASM build (-sALLOW_MEMORY_GROWTH=1)
+                // Do not set INITIAL_MEMORY here - it conflicts with ALLOW_MEMORY_GROWTH
+
+                // Data ready callback (called by WASM when response data available)
+                wasmSerialDataCallback: () => {
+                    if (this._dataCallback) {
+                        this._dataCallback();
+                    }
+                },
+
+                // Reboot callback (called by WASM when systemReset() is triggered)
+                // IMPORTANT: Don't try to clean up WASM from inside this callback!
+                // We're being called from EM_ASM inside WASM, so any cleanup here causes freezing.
+                // Just request the page reload via IPC - the reload will clean everything up.
+                wasmRequestReboot: () => {
+                    console.log('[WASM SITL] Reboot requested - requesting page reload via IPC');
+                    if (window.electronAPI && window.electronAPI.reloadPage) {
+                        window.electronAPI.reloadPage();
+                    } else {
+                        console.error('[WASM SITL] electronAPI.reloadPage not available');
+                    }
+                },
 
                 // Paths to WASM binary and data files
                 locateFile: (path, scriptDirectory) => {
@@ -178,6 +267,9 @@ class WasmSitlLoader {
             // The Module object needs to be global for Emscripten to find it
             window.Module = Module;
 
+            // Save script tag reference so we can remove it on reload (Scavanger's approach)
+            this._scriptTag = script;
+
             document.head.appendChild(script);
         });
     }
@@ -212,6 +304,31 @@ class WasmSitlLoader {
      */
     getError() {
         return this._loadError;
+    }
+
+    /**
+     * Set callback for when WASM has data ready (like a hardware interrupt)
+     * This is called by WASM when it completes writing a response
+     * @param {function} callback - Function to call when data is available
+     */
+    setDataCallback(callback) {
+        this._dataCallback = callback;
+    }
+
+    /**
+     * Called by firmware when systemReset() is triggered, before module reloads
+     * @param {function} callback - Typically used to trigger GUI disconnect
+     */
+    setRebootCallback(callback) {
+        this._rebootCallback = callback;
+    }
+
+    /**
+     * Called after WASM module successfully reloads
+     * @param {function} callback - Typically used to trigger GUI reconnect
+     */
+    setReconnectCallback(callback) {
+        this._reconnectCallback = callback;
     }
 
     /**

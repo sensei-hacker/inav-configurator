@@ -59,6 +59,9 @@ class ConnectionWasm extends Connection {
         // Approach 2: Buffer for accumulating response bytes from WASM
         this._receiveBuffer = new Uint8Array(4096);
         this._receiveBufferPos = 0;
+
+        // Track reboot event handler to prevent memory leak on reconnect
+        this._wasmRebootHandler = null;
     }
 
     /**
@@ -69,6 +72,15 @@ class ConnectionWasm extends Connection {
      */
     connectImplementation(path, options, callback) {
         console.log('[WASM Connection] Connecting to SITL simulator...');
+
+        // Prevent connection during module reload
+        if (this._loader && this._loader.isLoading()) {
+            console.log('[WASM Connection] Cannot connect: module is reloading');
+            if (callback) {
+                callback(false);
+            }
+            return;
+        }
 
         // Check if WASM is supported
         if (!WasmSitlLoader.isWasmSupported()) {
@@ -98,6 +110,38 @@ class ConnectionWasm extends Connection {
                 // Generate a pseudo-connection ID (WASM doesn't have real connections)
                 this._connectionId = Date.now();
 
+                // Register callback for when WASM has data ready (like a hardware interrupt)
+                this._loader.setDataCallback(() => {
+                    this._onSerialDataAvailable();
+                });
+
+                // Register reboot callback - disconnect when firmware reboots
+                // After reboot, the WASM instance is completely disposed and the
+                // UI returns to disconnected state (like at startup)
+                this._loader.setRebootCallback(() => {
+                    console.log('[WASM Connection] Firmware rebooting - dispatching reload event');
+                    const event = new CustomEvent('wasm-reboot', {
+                        detail: { timestamp: Date.now() }
+                    });
+                    window.dispatchEvent(event);
+                });
+
+                // Remove any existing listener to prevent memory leak on reconnect
+                if (this._wasmRebootHandler) {
+                    window.removeEventListener('wasm-reboot', this._wasmRebootHandler);
+                }
+
+                // Listen for the reboot event and reload the page
+                this._wasmRebootHandler = () => {
+                    console.log('[WASM Connection] Received wasm-reboot event, requesting reload');
+                    if (window.electronAPI && window.electronAPI.reloadPage) {
+                        window.electronAPI.reloadPage();
+                    } else {
+                        console.error('[WASM Connection] electronAPI.reloadPage not available!');
+                    }
+                };
+                window.addEventListener('wasm-reboot', this._wasmRebootHandler, { once: true });
+
                 console.log('[WASM Connection] Connected successfully, ID:', this._connectionId);
 
                 if (callback) {
@@ -121,6 +165,7 @@ class ConnectionWasm extends Connection {
 
     /**
      * Disconnect from WASM SITL
+     * Disposes of the WASM instance completely, returning to startup state
      * @param {function} callback - Called with true on success
      */
     disconnectImplementation(callback) {
@@ -128,6 +173,22 @@ class ConnectionWasm extends Connection {
 
         // Clear receive buffer
         this._receiveBufferPos = 0;
+
+        // Dispose of WASM instance completely if loaded
+        if (this._loader) {
+            if (this._loader.isLoaded()) {
+                console.log('[WASM Connection] Disposing WASM instance...');
+                this._loader.dispose();
+                console.log('[WASM Connection] WASM instance disposed - returned to startup state');
+            } else {
+                console.log('[WASM Connection] WASM instance already disposed or not loaded');
+            }
+        }
+
+        // Clear connection ID
+        this._connectionId = null;
+
+        console.log('[WASM Connection] Disconnect complete');
 
         if (callback) {
             callback(true);
@@ -139,6 +200,10 @@ class ConnectionWasm extends Connection {
      *
      * This behaves like Serial/TCP/BLE connections - just passes bytes through.
      * WASM's MSP parser handles packet framing/parsing.
+     *
+     * When WASM completes processing and has a response ready, it will call
+     * our registered callback (set in connectImplementation), which triggers
+     * _onSerialDataAvailable() to read the response.
      *
      * @param {ArrayBuffer} data - MSP packet data (framed)
      * @param {function} callback - Called with send result {bytesSent, resultCode}
@@ -161,10 +226,8 @@ class ConnectionWasm extends Connection {
                 module._serialWriteByte(bytes[i]);
             }
 
-            // Poll for response (small delay for WASM to process)
-            setTimeout(() => {
-                this._pollSerialResponse();
-            }, 10);
+            // No polling needed! WASM will call our callback when data is ready
+            // (via Module.wasmSerialDataCallback -> _onSerialDataAvailable)
 
             // Report successful send
             if (callback) {
@@ -188,16 +251,17 @@ class ConnectionWasm extends Connection {
     }
 
     /**
-     * Poll WASM for serial response bytes
+     * Called by WASM when serial response data is available (interrupt-style callback)
+     * Reads all available bytes and triggers receive listeners
      * @private
      */
-    _pollSerialResponse() {
+    _onSerialDataAvailable() {
         const module = this._loader.getModule();
 
         // Check if response data available
         const available = module._serialAvailable();
         if (available <= 0) {
-            return;  // No data yet
+            return;  // No data (shouldn't happen, but be safe)
         }
 
         // Read all available bytes from WASM TX buffer
@@ -209,7 +273,7 @@ class ConnectionWasm extends Connection {
             }
         }
 
-        // Trigger receive callbacks
+        // Trigger receive callbacks (notify configurator that data arrived)
         this._onReceiveListeners.forEach(listener => {
             listener({
                 connectionId: this._connectionId,

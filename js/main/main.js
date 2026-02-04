@@ -276,6 +276,22 @@ app.whenReady().then(() => {
     event.returnValue = app.getLocale();
   });
 
+  ipcMain.on('reloadPage', (event) => {
+    const webContents = event.sender;
+    if (!webContents) {
+      console.error('[Main Process] reloadPage called but event.sender is null!');
+      return;
+    }
+
+    console.log('[Main Process] Reloading page for WASM reboot');
+    const currentURL = webContents.getURL();
+
+    // Navigate to blank page first, then back (forces full reload)
+    webContents.loadURL('about:blank').then(() => {
+      webContents.loadURL(currentURL);
+    });
+  });
+
   ipcMain.handle('dialog.showOpenDialog', (_event, options) => {
     return dialog.showOpenDialog(options);
   }),
