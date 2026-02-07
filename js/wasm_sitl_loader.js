@@ -192,8 +192,9 @@ class WasmSitlLoader {
                 // Paths to WASM binary and data files
                 locateFile: (path, scriptDirectory) => {
                     // The WASM file will be loaded from resources/sitl/
+                    // Build outputs SITL.elf.wasm (emscripten naming convention)
                     if (path.endsWith('.wasm')) {
-                        return 'resources/sitl/SITL.wasm';
+                        return 'resources/sitl/' + path;
                     }
                     return scriptDirectory + path;
                 },

@@ -10,7 +10,8 @@ export default {
     asar: false,
     icon: 'images/inav',
     extraResource: [
-      'resources/public/sitl'
+      'resources/public/sitl',
+      'resources/sitl'
     ],
   },
   rebuildConfig: {},
