@@ -11,10 +11,17 @@
  * - Initializes Emscripten runtime with browser-compatible settings
  * - Provides serial byte interface (serialWriteByte/serialReadByte/serialAvailable)
  * - MSP communication uses the standard serial layer via ConnectionWasm
+ * - Persists settings to IndexedDB for retention across page reloads
  * - Handles errors gracefully with user-friendly messages
  *
  * Usage: See ConnectionWasm for the connection interface.
  */
+
+// IndexedDB constants
+const EEPROM_DB_NAME = 'inav-wasm-sitl';
+const EEPROM_DB_VERSION = 1;
+const EEPROM_STORE_NAME = 'eeprom';
+const EEPROM_KEY = 'eepromData';
 
 class WasmSitlLoader {
 
@@ -27,6 +34,7 @@ class WasmSitlLoader {
         this._dataCallback = null;
         this._rebootCallback = null;
         this._reconnectCallback = null;
+        this._db = null;  // IndexedDB database handle
     }
 
     /**
@@ -36,6 +44,170 @@ class WasmSitlLoader {
     static isWasmSupported() {
         return typeof WebAssembly === 'object'
             && typeof WebAssembly.instantiate === 'function';
+    }
+
+    // =========================================================================
+    // IndexedDB Persistence Methods
+    // =========================================================================
+
+    /**
+     * Open IndexedDB database for EEPROM persistence
+     * @private
+     * @returns {Promise<IDBDatabase>}
+     */
+    async _openDatabase() {
+        if (this._db) {
+            return this._db;
+        }
+
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(EEPROM_DB_NAME, EEPROM_DB_VERSION);
+
+            request.onerror = () => {
+                console.error('[WASM SITL] Failed to open IndexedDB:', request.error);
+                reject(request.error);
+            };
+
+            request.onsuccess = () => {
+                this._db = request.result;
+                console.log('[WASM SITL] IndexedDB opened successfully');
+                resolve(this._db);
+            };
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains(EEPROM_STORE_NAME)) {
+                    db.createObjectStore(EEPROM_STORE_NAME);
+                    console.log('[WASM SITL] Created EEPROM object store');
+                }
+            };
+        });
+    }
+
+    /**
+     * Load stored EEPROM data from IndexedDB
+     * @private
+     * @returns {Promise<Uint8Array|null>} Stored data or null if not found
+     */
+    async _loadStoredEeprom() {
+        try {
+            const db = await this._openDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(EEPROM_STORE_NAME, 'readonly');
+                const store = transaction.objectStore(EEPROM_STORE_NAME);
+                const request = store.get(EEPROM_KEY);
+
+                request.onerror = () => {
+                    console.warn('[WASM SITL] Failed to load stored EEPROM:', request.error);
+                    resolve(null);
+                };
+
+                request.onsuccess = () => {
+                    if (request.result) {
+                        // IndexedDB returns ArrayBuffer, which has byteLength not length
+                        const arrayBuffer = request.result;
+                        const data = new Uint8Array(arrayBuffer);
+                        console.log('[WASM SITL] Loaded stored EEPROM data:', data.length, 'bytes');
+                        resolve(data);
+                    } else {
+                        console.log('[WASM SITL] No stored EEPROM data found');
+                        resolve(null);
+                    }
+                };
+            });
+        } catch (error) {
+            console.warn('[WASM SITL] Error loading stored EEPROM:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Save EEPROM data to IndexedDB
+     * @private
+     * @param {Uint8Array} data - EEPROM data to store
+     * @returns {Promise<void>}
+     */
+    async _saveEepromToStorage(data) {
+        try {
+            const db = await this._openDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(EEPROM_STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(EEPROM_STORE_NAME);
+                const request = store.put(data.buffer, EEPROM_KEY);
+
+                request.onerror = () => {
+                    console.error('[WASM SITL] Failed to save EEPROM to IndexedDB:', request.error);
+                    reject(request.error);
+                };
+
+                request.onsuccess = () => {
+                    console.log('[WASM SITL] EEPROM saved to IndexedDB:', data.length, 'bytes');
+                    resolve();
+                };
+            });
+        } catch (error) {
+            console.error('[WASM SITL] Error saving EEPROM:', error);
+        }
+    }
+
+    /**
+     * Read EEPROM data from WASM memory
+     * @private
+     * @returns {Uint8Array|null} EEPROM data or null if module not loaded
+     */
+    _readEepromFromWasm() {
+        if (!this._module || typeof this._module._wasmGetEepromPtr !== 'function') {
+            return null;
+        }
+
+        const ptr = this._module._wasmGetEepromPtr();
+        const size = this._module._wasmGetEepromSize();
+
+        if (!ptr || !size) {
+            console.warn('[WASM SITL] Invalid EEPROM pointer or size');
+            return null;
+        }
+
+        // Read from WASM heap
+        return new Uint8Array(this._module.HEAPU8.buffer, ptr, size).slice();
+    }
+
+    /**
+     * Write EEPROM data to WASM memory and reload config
+     * @private
+     * @param {Uint8Array} data - EEPROM data to write
+     * @returns {boolean} true if successful
+     */
+    _writeEepromToWasm(data) {
+        if (!this._module || typeof this._module._wasmGetEepromPtr !== 'function') {
+            return false;
+        }
+
+        const ptr = this._module._wasmGetEepromPtr();
+        const size = this._module._wasmGetEepromSize();
+
+        if (!ptr || !size) {
+            console.warn('[WASM SITL] Invalid EEPROM pointer or size');
+            return false;
+        }
+
+        if (data.length !== size) {
+            console.warn('[WASM SITL] EEPROM size mismatch:', data.length, 'vs', size);
+            return false;
+        }
+
+        // Write to WASM heap
+        this._module.HEAPU8.set(data, ptr);
+        console.log('[WASM SITL] Wrote', data.length, 'bytes to WASM EEPROM');
+
+        // Reload config from the injected data
+        if (typeof this._module._wasmReloadConfig === 'function') {
+            const valid = this._module._wasmReloadConfig();
+            console.log('[WASM SITL] Config reload result:', valid ? 'success' : 'invalid data');
+            return valid;
+        }
+
+        return true;
     }
 
     /**
@@ -65,8 +237,11 @@ class WasmSitlLoader {
         try {
             console.log('[WASM SITL] Starting module load...');
 
+            // Pre-load stored EEPROM data from IndexedDB
+            const storedEeprom = await this._loadStoredEeprom();
+
             // Load the Emscripten glue code (SITL.elf is actually a .js file)
-            const module = await this._loadEmscriptenGlue();
+            const module = await this._loadEmscriptenGlue(storedEeprom);
 
             console.log('[WASM SITL] Module loaded successfully');
             this._module = module;
@@ -137,6 +312,12 @@ class WasmSitlLoader {
         this._rebootCallback = null;
         this._reconnectCallback = null;
 
+        // Close IndexedDB connection (but don't delete the data)
+        if (this._db) {
+            this._db.close();
+            this._db = null;
+        }
+
         console.log('[WASM SITL] Module disposed - returned to initial state');
     }
 
@@ -153,15 +334,19 @@ class WasmSitlLoader {
     /**
      * Load the Emscripten glue code which will automatically load the WASM binary
      * @private
+     * @param {Uint8Array|null} storedEeprom - Pre-loaded EEPROM data from IndexedDB
      * @returns {Promise<object>} Initialized Module
      */
-    async _loadEmscriptenGlue() {
+    async _loadEmscriptenGlue(storedEeprom) {
         return new Promise((resolve, reject) => {
+            // Reference to loader instance for callbacks
+            const loader = this;
+
             // Emscripten Module configuration
             const Module = {
-                // Let Emscripten call main() automatically after runtime init
-                // main() will call init() and start the scheduler loop
-                noInitialRun: false,
+                // Delay main() so we can inject stored EEPROM data first
+                // After injecting, we manually call callMain()
+                noInitialRun: true,
 
                 // Disable filesystem access (not needed for SITL)
                 noFSInit: true,
@@ -173,6 +358,15 @@ class WasmSitlLoader {
                 wasmSerialDataCallback: () => {
                     if (this._dataCallback) {
                         this._dataCallback();
+                    }
+                },
+
+                // EEPROM saved callback (called by WASM after writeEEPROM completes)
+                wasmEepromSavedCallback: () => {
+                    console.log('[WASM SITL] EEPROM save notification received');
+                    const eepromData = loader._readEepromFromWasm();
+                    if (eepromData) {
+                        loader._saveEepromToStorage(eepromData);
                     }
                 },
 
@@ -209,7 +403,7 @@ class WasmSitlLoader {
                     console.error('[WASM SITL ERROR]', text);
                 },
 
-                // Called when runtime is initialized
+                // Called when runtime is initialized (before main() since noInitialRun: true)
                 onRuntimeInitialized: () => {
                     console.log('[WASM SITL] Runtime initialized');
 
@@ -221,8 +415,31 @@ class WasmSitlLoader {
                         return;
                     }
 
-                    // main() has been called automatically (noInitialRun: false)
-                    // It calls init() and starts the scheduler loop via emscripten_set_main_loop()
+                    // Verify EEPROM bridge functions are exported
+                    const hasEepromBridge = typeof Module._wasmGetEepromPtr === 'function' &&
+                        typeof Module._wasmGetEepromSize === 'function';
+
+                    if (!hasEepromBridge) {
+                        console.warn('[WASM SITL] EEPROM bridge functions not found - persistence disabled');
+                    } else if (storedEeprom) {
+                        // Inject stored EEPROM data BEFORE calling main()
+                        // This way, init() will read our stored data instead of using defaults
+                        const ptr = Module._wasmGetEepromPtr();
+                        const size = Module._wasmGetEepromSize();
+
+                        if (ptr && size && storedEeprom.length === size) {
+                            console.log('[WASM SITL] Injecting stored EEPROM data before main()...');
+                            Module.HEAPU8.set(storedEeprom, ptr);
+                            console.log('[WASM SITL] Injected', storedEeprom.length, 'bytes to EEPROM buffer');
+                        } else {
+                            console.warn('[WASM SITL] EEPROM size mismatch or invalid pointer, using defaults');
+                        }
+                    }
+
+                    // Now call main() - the firmware will read our injected EEPROM data
+                    console.log('[WASM SITL] Starting firmware (calling main)...');
+                    Module.callMain();
+
                     console.log('[WASM SITL] Firmware initialized and scheduler running');
 
                     resolve(Module);
@@ -309,6 +526,43 @@ class WasmSitlLoader {
      */
     setReconnectCallback(callback) {
         this._reconnectCallback = callback;
+    }
+
+    /**
+     * Clear all stored EEPROM data from IndexedDB
+     * Use this for "reset to factory defaults" functionality
+     * @returns {Promise<void>}
+     */
+    async clearStoredSettings() {
+        try {
+            const db = await this._openDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(EEPROM_STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(EEPROM_STORE_NAME);
+                const request = store.delete(EEPROM_KEY);
+
+                request.onerror = () => {
+                    console.error('[WASM SITL] Failed to clear stored settings:', request.error);
+                    reject(request.error);
+                };
+
+                request.onsuccess = () => {
+                    console.log('[WASM SITL] Stored settings cleared');
+                    resolve();
+                };
+            });
+        } catch (error) {
+            console.error('[WASM SITL] Error clearing stored settings:', error);
+        }
+    }
+
+    /**
+     * Check if there are stored settings in IndexedDB
+     * @returns {Promise<boolean>}
+     */
+    async hasStoredSettings() {
+        const data = await this._loadStoredEeprom();
+        return data !== null;
     }
 }
 
