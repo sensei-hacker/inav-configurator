@@ -132,31 +132,35 @@ class ConnectionWasm extends Connection {
 
     /**
      * Disconnect from WASM SITL
-     * Disposes of the WASM instance completely, returning to startup state
-     * @param {function} callback - Called with true on success
+     * Reloads the page to ensure a completely clean state for reconnection.
+     * This matches the reboot behavior and guarantees no stale WASM state.
+     * @param {function} callback - Called with true on success (before reload)
      */
     disconnectImplementation(callback) {
-        console.log('[WASM Connection] Disconnecting...');
+        console.log('[WASM Connection] Disconnecting - will reload page for clean state');
 
-        // Dispose of WASM instance completely if loaded
-        if (this._loader) {
-            if (this._loader.isLoaded()) {
-                console.log('[WASM Connection] Disposing WASM instance...');
-                this._loader.dispose();
-                console.log('[WASM Connection] WASM instance disposed - returned to startup state');
-            } else {
-                console.log('[WASM Connection] WASM instance already disposed or not loaded');
-            }
-        }
-
-        // Clear connection ID
+        // Clear connection ID first
         this._connectionId = null;
 
-        console.log('[WASM Connection] Disconnect complete');
-
+        // Call callback before reload
         if (callback) {
             callback(true);
         }
+
+        // Reload page for clean state (same as reboot flow)
+        // Small delay to allow disconnect UI updates to complete
+        setTimeout(() => {
+            if (window.electronAPI && window.electronAPI.reloadPage) {
+                console.log('[WASM Connection] Reloading page...');
+                window.electronAPI.reloadPage();
+            } else {
+                // Fallback: try to dispose and hope reconnect works
+                console.warn('[WASM Connection] electronAPI.reloadPage not available, attempting dispose');
+                if (this._loader && this._loader.isLoaded()) {
+                    this._loader.dispose();
+                }
+            }
+        }, 100);
     }
 
     /**
