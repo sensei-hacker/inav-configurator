@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM SITL Loader Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #log {
+            background: #f5f5f5;
+            padding: 10px;
+            height: 400px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>WASM SITL Loader Test</h1>
+
+    <div id="status" class="status info">Ready to test</div>
+
+    <div>
+        <button onclick="testBrowserSupport()">1. Check Browser Support</button>
+        <button onclick="testLoadModule()">2. Load WASM Module</button>
+        <button onclick="testMspCommand()">3. Test MSP Command</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <h3>Log:</h3>
+    <div id="log"></div>
+
+    <script type="module">
+        import { WasmSitlLoader } from './js/wasm_sitl_loader.js';
+
+        let loader = null;
+
+        window.testBrowserSupport = function() {
+            log('Testing browser WebAssembly support...');
+
+            if (WasmSitlLoader.isWasmSupported()) {
+                setStatus('✅ Browser supports WebAssembly', 'success');
+                log('✅ WebAssembly is supported');
+            } else {
+                setStatus('❌ Browser does not support WebAssembly', 'error');
+                log('❌ WebAssembly is NOT supported');
+            }
+        };
+
+        window.testLoadModule = async function() {
+            log('Loading WASM SITL module...');
+            setStatus('Loading...', 'info');
+
+            try {
+                loader = new WasmSitlLoader();
+                const module = await loader.load();
+
+                setStatus('✅ WASM module loaded successfully', 'success');
+                log('✅ Module loaded');
+                log('Module exports:');
+                log('  - _wasm_msp_process_command: ' + (typeof module._wasm_msp_process_command));
+                log('  - _malloc: ' + (typeof module._malloc));
+                log('  - _free: ' + (typeof module._free));
+
+            } catch (error) {
+                setStatus('❌ Failed to load WASM module: ' + error.message, 'error');
+                log('❌ Error: ' + error.message);
+                console.error(error);
+            }
+        };
+
+        window.testMspCommand = async function() {
+            if (!loader || !loader.isLoaded()) {
+                setStatus('⚠️ Please load the module first (click button 2)', 'error');
+                return;
+            }
+
+            log('\nTesting MSP command: MSP_API_VERSION (cmd=1)');
+
+            try {
+                // MSP_API_VERSION has no payload
+                const reply = loader.processMspCommand(1, null);
+
+                log('✅ MSP command successful!');
+                log('Reply length: ' + reply.length + ' bytes');
+                log('Reply data: ' + Array.from(reply).map(b => b.toString(16).padStart(2, '0')).join(' '));
+
+                if (reply.length >= 3) {
+                    const protocolVersion = reply[0];
+                    const apiMajor = reply[1];
+                    const apiMinor = reply[2];
+
+                    log(`API Version: ${apiMajor}.${apiMinor} (protocol ${protocolVersion})`);
+                    setStatus(`✅ MSP working! API Version: ${apiMajor}.${apiMinor}`, 'success');
+                } else {
+                    setStatus('⚠️ Unexpected reply length', 'error');
+                }
+
+            } catch (error) {
+                setStatus('❌ MSP command failed: ' + error.message, 'error');
+                log('❌ Error: ' + error.message);
+                console.error(error);
+            }
+        };
+
+        window.clearLog = function() {
+            document.getElementById('log').textContent = '';
+        };
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function setStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+        }
+
+        // Auto-test on load
+        log('WASM SITL Loader Test initialized');
+        log('Click button 1 to check browser support');
+    </script>
+</body>
+</html>

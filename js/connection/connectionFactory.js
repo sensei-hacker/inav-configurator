@@ -5,12 +5,13 @@ import ConnectionBle from './connectionBle';
 import ConnectionSerial from './connectionSerial';
 import ConnectionTcp from './connectionTcp';
 import ConnectionUdp from './connectionUdp';
+import ConnectionWasm from './connectionWasm';
 
 var connectionFactory = function(type, instance) {
     if (instance && (instance.type == type || instance.connectionId)){
         return instance;
     }
-    
+
     switch (type) {
         case ConnectionType.BLE:
             instance = new ConnectionBle();
@@ -20,6 +21,9 @@ var connectionFactory = function(type, instance) {
             break;
         case ConnectionType.UDP:
             instance = new ConnectionUdp();
+            break;
+        case ConnectionType.WASM:
+            instance = new ConnectionWasm();
             break;
         default:
         case ConnectionType.Serial:

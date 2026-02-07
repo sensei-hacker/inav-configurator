@@ -143,7 +143,9 @@ var SerialBackend = (function () {
                 type = ConnectionType.TCP;
             } else if (selected_port.data().isUdp) {
                 type = ConnectionType.UDP;
-            } 
+            } else if (selected_port.data().isWasm) {
+                type = ConnectionType.WASM;
+            }
             CONFIGURATOR.connection = connectionFactory(type, CONFIGURATOR.connection);
             
         };

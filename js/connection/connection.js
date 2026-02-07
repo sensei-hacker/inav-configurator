@@ -6,7 +6,8 @@ const ConnectionType = {
     Serial: 0,
     TCP:    1,
     UDP:    2,
-    BLE:    3
+    BLE:    3,
+    WASM:   4
 }
 
 class Connection {

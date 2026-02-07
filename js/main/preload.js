@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return handler;
   },
   offUdpMessage: (handler) => ipcRenderer.removeListener('udpMessage', handler),
+  reloadPage: () => ipcRenderer.send('reloadPage'),
   writeFile: (filename, data) => ipcRenderer.invoke('writeFile', filename, data),
   appendFile: (filename, data) => ipcRenderer.invoke('appendFile', filename, data),
   readFile: (filename, encoding = 'utf8') => ipcRenderer.invoke('readFile', filename, encoding),
