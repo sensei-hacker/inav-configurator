@@ -98,7 +98,7 @@ class ConnectionTcp extends Connection {
 
     disconnectImplementation(callback) {
         
-        if (this._connectionId) {
+        if (this.hasConnectionId()) {
             window.electronAPI.tcpClose();
         }
 
@@ -111,7 +111,7 @@ class ConnectionTcp extends Connection {
     }
 
    sendImplementation(data, callback) {     
-        if (this._connectionId) {
+        if (this.hasConnectionId()) {
             window.electronAPI.tcpSend(data).then(response => {
                 var result = 0;
                 var sent = response.bytesWritten;

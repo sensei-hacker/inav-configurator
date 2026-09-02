@@ -98,7 +98,7 @@ class ConnectionSerial extends Connection {
     }
 
     disconnectImplementation(callback) {   
-        if (this._connectionId) {
+        if (this.hasConnectionId()) {
             window.electronAPI.serialClose().then(response => {
                 var ok = true;
                 if (response.error) {
@@ -113,7 +113,7 @@ class ConnectionSerial extends Connection {
     }
 
     sendImplementation(data, callback) {        
-        if (this._connectionId) {
+        if (this.hasConnectionId()) {
             window.electronAPI.serialSend(data).then(response => {
                 var result = 0;
                 var sent = response.bytesWritten;
